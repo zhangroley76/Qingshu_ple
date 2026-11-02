@@ -83,10 +83,14 @@ class PinyinController(
         // Volume, media, call and similar keys never touch the composition.
         if (event?.isSystem == true) return false
         if (!engine.isReady) {
-            engine.ensureLoaded()
-            if (engine.state == PinyinEngine.State.FAILED && !failureToastShown) {
-                failureToastShown = true
-                Toast.makeText(appContext, "拼音引擎无法载入：${engine.failureReason}", Toast.LENGTH_LONG).show()
+            if (engine.state == PinyinEngine.State.FAILED) {
+                // Don't retry on every key; say why once.
+                if (!failureToastShown) {
+                    failureToastShown = true
+                    Toast.makeText(appContext, "拼音引擎无法载入：${engine.failureReason}", Toast.LENGTH_LONG).show()
+                }
+            } else {
+                engine.ensureLoaded()
             }
             return false
         }

@@ -41,6 +41,8 @@ class PinyinEngine(context: Context) {
             onReady?.invoke()
             return
         }
+        // A failed load stays failed until resetFailure(); retrying on every key only floods the log.
+        if (state == State.FAILED) return
         onReady?.let { readyListeners += it }
         if (state == State.LOADING) return
         state = State.LOADING
