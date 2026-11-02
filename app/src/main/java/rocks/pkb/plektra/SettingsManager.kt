@@ -1596,6 +1596,14 @@ object SettingsManager {
             .apply()
     }
 
+    /** Qingshu: the physical Shift and Alt keys trade places inside the keyboard. */
+    fun getSwapShiftAlt(context: Context): Boolean =
+        getPreferences(context).getBoolean("qingshu_swap_shift_alt", false)
+
+    fun setSwapShiftAlt(context: Context, enabled: Boolean) {
+        getPreferences(context).edit().putBoolean("qingshu_swap_shift_alt", enabled).apply()
+    }
+
     fun getAltLatchStaysOnSpace(context: Context): Boolean {
         return getPreferences(context).getBoolean(
             KEY_ALT_LATCH_STAYS_ON_SPACE,

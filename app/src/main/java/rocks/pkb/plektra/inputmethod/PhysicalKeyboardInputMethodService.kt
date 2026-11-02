@@ -4694,11 +4694,19 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     }
 
     private fun remapHardwareEvent(keyCode: Int, event: KeyEvent?): ClicksPowerButtonEventMapper.Result {
-        val remapped = DeviceSpecific.remapHardwareKeyEvent(
+        val profileRemapped = DeviceSpecific.remapHardwareKeyEvent(
             keyCode,
             event,
             physicalKeyboardProfileOverride
         )
+        // Qingshu: optional Shift/Alt swap, applied to the keys and to every event's meta state.
+        val remapped = if (SettingsManager.getSwapShiftAlt(this)) {
+            val (swappedCode, swappedEvent) =
+                rocks.pkb.plektra.pinyin.ShiftAltSwap.swap(profileRemapped.keyCode, profileRemapped.event)
+            profileRemapped.copy(keyCode = swappedCode, event = swappedEvent)
+        } else {
+            profileRemapped
+        }
         val isClicksPowerKeyboard = !dispatchingClicksAccessibilityKeyEvent &&
             (event
                 ?.takeIf { it.deviceId >= 0 }

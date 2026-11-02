@@ -68,6 +68,7 @@ fun ModifierSettingsScreen(
     var showSymShortcutCompatibilityInfo by remember { mutableStateOf(false) }
     var longPressExpanded by remember { mutableStateOf(false) }
     var altBindingExpanded by remember { mutableStateOf(false) }
+    var swapShiftAlt by remember { mutableStateOf(SettingsManager.getSwapShiftAlt(context)) }
 
     val longPressOptions = listOf(
         "alt" to stringResource(R.string.long_press_modifier_alt),
@@ -170,6 +171,15 @@ fun ModifierSettingsScreen(
                 onClick = onOpenSymShortcuts,
                 onInfoClick = { showSymShortcutCompatibilityInfo = true }
             )
+
+            ModifierSwitchRow(
+                title = stringResource(R.string.swap_shift_alt_title),
+                description = stringResource(R.string.swap_shift_alt_description),
+                checked = swapShiftAlt
+            ) {
+                swapShiftAlt = it
+                SettingsManager.setSwapShiftAlt(context, it)
+            }
 
             SettingsSectionDivider(stringResource(R.string.modifiers_section_alt_modifier))
             ModifierDropdownRow(
