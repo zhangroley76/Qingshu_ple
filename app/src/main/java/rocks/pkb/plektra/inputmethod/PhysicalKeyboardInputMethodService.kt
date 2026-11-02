@@ -3394,9 +3394,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         SettingsManager.getPreferences(this).getBoolean(rocks.pkb.plektra.pinyin.QingshuMode.PREF_CHINESE_MODE, false)
 
     private fun isShiftSpaceChord(event: KeyEvent?): Boolean {
-        val shift = qsShiftHeld || event?.isShiftPressed == true || shiftPressed ||
+        val shift = event?.isShiftPressed == true || shiftPressed ||
             modifierStateController.shiftPhysicallyPressed || shiftOneShot || shiftLayerLatched
-        val alt = qsAltHeld || event?.isAltPressed == true || altPressed || altPhysicallyPressed || altLatchActive || altOneShot
+        val alt = event?.isAltPressed == true || altPressed || altPhysicallyPressed || altLatchActive || altOneShot
         val ctrl = event?.isCtrlPressed == true || ctrlPressed || ctrlPhysicallyPressed ||
             ctrlLatchActive || ctrlOneShot || ctrlLatchFromNavMode
         if (event == null || event.repeatCount != 0) return false
@@ -3461,7 +3461,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
      * (A/D) and turn pages (W/S), like the real arrow keys.
      */
     private fun handleFnArrowKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        val fnHeld = qsFnHeld || event?.isFunctionPressed == true || event?.isCtrlPressed == true
+        val fnHeld = event?.isFunctionPressed == true || event?.isCtrlPressed == true || ctrlPhysicallyPressed
         if (!fnHeld) return false
         val arrow = when (keyCode) {
             KeyEvent.KEYCODE_W -> KeyEvent.KEYCODE_DPAD_UP
@@ -3483,7 +3483,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             return true
         }
         val ic = currentInputConnection ?: return false
-        val shift = qsShiftHeld || event?.isShiftPressed == true
+        val shift = event?.isShiftPressed == true
         val meta = if (shift) KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON else 0
         val now = android.os.SystemClock.uptimeMillis()
         ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, arrow, 0, meta))
@@ -3561,7 +3561,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
                 altText = if (alt) alternateCharacterManager.getAltModifierMappings()[keyCode] else null,
                 overlayActive = symLayoutController.isSymActive() || navModeController.isNavModeActive(),
                 // A physically held Alt means "select", even when Alt is also locked for numbers.
-                altLocked = altLatchActive && !qsAltHeld
+                altLocked = altLatchActive && event?.isAltPressed != true && !altPhysicallyPressed
             )
         )
         if (consumed) {
