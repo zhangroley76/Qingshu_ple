@@ -27,8 +27,14 @@ check() { # name, expected substring of the field text
 log "install"
 adb install -r -g "$APK" || exit 1
 adb shell settings put secure show_ime_with_hard_keyboard 1
-adb shell ime enable "$IME"
-adb shell ime set "$IME"
+# The IME registers asynchronously after install; retry until Android reports it as current.
+for _ in $(seq 1 30); do
+  adb shell ime enable "$IME" >/dev/null 2>&1
+  adb shell ime set "$IME" >/dev/null 2>&1
+  [[ "$(adb shell settings get secure default_input_method | tr -d '\r')" == "$IME" ]] && break
+  sleep 2
+done
+echo "default_input_method=$(adb shell settings get secure default_input_method)"
 
 adb logcat -c
 adb shell am start -W -n "$PKG/rocks.pkb.plektra.QingshuTestActivity"
@@ -88,6 +94,8 @@ adb logcat -d -v time > "$OUT/logcat.txt"
 
 {
   echo "## Emulator pinyin test"
+  echo
+  echo "IME: $(adb shell settings get secure default_input_method | tr -d '\r')"
   echo
   echo '```'
   printf '%s\n' "${checks[@]}"
