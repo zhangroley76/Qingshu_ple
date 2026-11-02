@@ -1,0 +1,289 @@
+From 9d37d4d5c760b80c48f5a0617c115562a8dbcdd4 Mon Sep 17 00:00:00 2001
+From: Qingshu <noreply@github.com>
+Date: Mon, 2 Nov 2026 12:14:18 -0800
+Subject: [PATCH] Qingshu: offline association from the bigram language model
+
+BigramModel::top_successors lists the most frequent next words; the Android
+core exposes it through createAssociation/associate/destroyAssociation.
+---
+ apps/android/core/src/association.rs     | 92 ++++++++++++++++++++++++
+ apps/android/core/src/jni/association.rs | 74 +++++++++++++++++++
+ apps/android/core/src/jni/mod.rs         |  1 +
+ apps/android/core/src/lib.rs             |  2 +
+ crates/qingjian-lm/src/bigram_model.rs   | 41 +++++++++++
+ 5 files changed, 210 insertions(+)
+ create mode 100644 apps/android/core/src/association.rs
+ create mode 100644 apps/android/core/src/jni/association.rs
+
+diff --git a/apps/android/core/src/association.rs b/apps/android/core/src/association.rs
+new file mode 100644
+index 0000000..b332f43
+--- /dev/null
++++ b/apps/android/core/src/association.rs
+@@ -0,0 +1,92 @@
++//! 联想（Qingshu）：上屏之后，按语言模型给出最常接在后面的词。
++//!
++//! 只读语言模型（`lm.qj`），与 Engine 分开：没有拼音约束，只在壳显示联想条时用，不影响组句与排序。
++
++use std::path::Path;
++
++use qingjian_lm::{BigramModel, LmError};
++
++/// 往回找前词时最多看几个字。
++const MAX_PREVIOUS_CHARS: usize = 8;
++
++pub struct Association {
++    model: BigramModel,
++}
++
++impl Association {
++    pub fn open(path: &Path) -> Result<Self, LmError> {
++        Ok(Self {
++            model: BigramModel::from_path(path)?,
++        })
++    }
++
++    pub fn from_model(model: BigramModel) -> Self {
++        Self { model }
++    }
++
++    /// `text`（光标前刚上屏的文字）之后的联想词，最多 `limit` 个。
++    ///
++    /// 前词取 `text` 末尾在词表里能找到的最长一段（整句上屏时就是句尾那个词）；
++    /// 末尾是标点、空白或西文时不联想。只给含汉字的词。
++    pub fn after(&self, text: &str, limit: usize) -> Vec<String> {
++        let Some(last) = text.chars().last() else {
++            return Vec::new();
++        };
++        if !is_han(last) {
++            return Vec::new();
++        }
++        let tail: Vec<char> = text.chars().rev().take(MAX_PREVIOUS_CHARS).collect();
++        for length in (1..=tail.len()).rev() {
++            let previous: String = tail[..length].iter().rev().collect();
++            if !previous.chars().all(is_han) || !self.model.contains(&previous) {
++                continue;
++            }
++            let words: Vec<String> = self
++                .model
++                .top_successors(&previous, limit * 3)
++                .into_iter()
++                .map(|(word, _)| word)
++                .filter(|word| word.chars().any(is_han))
++                .take(limit)
++                .map(str::to_owned)
++                .collect();
++            if !words.is_empty() {
++                return words;
++            }
++        }
++        Vec::new()
++    }
++}
++
++fn is_han(c: char) -> bool {
++    matches!(c as u32,
++        0x3400..=0x4DBF | 0x4E00..=0x9FFF | 0xF900..=0xFAFF | 0x20000..=0x3134F)
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    fn association() -> Association {
++        let unigram = "<s>\t100\n你好\t50\n啊\t30\n吗\t20\n中文\t10\n今天\t10\n天气\t10\nok\t5\n";
++        let bigram = "<s>\t你好\t40\n你好\t啊\t25\n你好\t吗\t15\n你好\tok\t9\n今天\t天气\t8\n";
++        Association::from_model(BigramModel::parse(unigram, bigram).unwrap())
++    }
++
++    #[test]
++    fn follows_the_longest_known_word_at_the_end() {
++        let a = association();
++        assert_eq!(a.after("你好", 5), vec!["啊", "吗"]);
++        assert_eq!(a.after("我说你好", 5), vec!["啊", "吗"]);
++        assert_eq!(a.after("今天", 1), vec!["天气"]);
++    }
++
++    #[test]
++    fn nothing_after_punctuation_latin_or_unknown_words() {
++        let a = association();
++        assert!(a.after("你好，", 5).is_empty());
++        assert!(a.after("hello", 5).is_empty());
++        assert!(a.after("", 5).is_empty());
++        assert!(a.after("鑫", 5).is_empty());
++    }
++}
+diff --git a/apps/android/core/src/jni/association.rs b/apps/android/core/src/jni/association.rs
+new file mode 100644
+index 0000000..c043844
+--- /dev/null
++++ b/apps/android/core/src/jni/association.rs
+@@ -0,0 +1,74 @@
++//! 联想（Qingshu）的出口：独立句柄，只读语言模型，与输入会话无关。
++
++use std::panic::{AssertUnwindSafe, catch_unwind};
++use std::path::Path;
++
++use ::jni::JNIEnv;
++use ::jni::objects::{JObject, JString};
++use ::jni::sys::{jint, jlong, jstring};
++
++use crate::association::Association;
++
++/// 打开 `lm.qj`；失败返回 0（原因在 logcat）。
++#[unsafe(no_mangle)]
++pub extern "system" fn Java_app_qingjian_inputmethod_core_Native_createAssociation<'local>(
++    mut env: JNIEnv<'local>,
++    _this: JObject<'local>,
++    model_path: JString<'local>,
++) -> jlong {
++    super::logging::init();
++    let Ok(path) = env.get_string(&model_path).map(String::from) else {
++        return 0;
++    };
++    match catch_unwind(|| Association::open(Path::new(&path))) {
++        Ok(Ok(association)) => Box::into_raw(Box::new(association)) as jlong,
++        Ok(Err(error)) => {
++            tracing::error!(%error, "联想模型加载失败");
++            0
++        }
++        Err(_) => {
++            tracing::error!("联想模型加载时 panic");
++            0
++        }
++    }
++}
++
++#[unsafe(no_mangle)]
++pub extern "system" fn Java_app_qingjian_inputmethod_core_Native_destroyAssociation<'local>(
++    _env: JNIEnv<'local>,
++    _this: JObject<'local>,
++    handle: jlong,
++) {
++    if handle != 0 {
++        // SAFETY: handle came from createAssociation and is destroyed exactly once by the shell.
++        drop(unsafe { Box::from_raw(handle as *mut Association) });
++    }
++}
++
++/// `before`（光标前的文字）之后的联想词，JSON 字符串数组；失败返回 null。
++#[unsafe(no_mangle)]
++pub extern "system" fn Java_app_qingjian_inputmethod_core_Native_associate<'local>(
++    mut env: JNIEnv<'local>,
++    _this: JObject<'local>,
++    handle: jlong,
++    before: JString<'local>,
++    limit: jint,
++) -> jstring {
++    if handle == 0 {
++        return std::ptr::null_mut();
++    }
++    let Ok(before) = env.get_string(&before).map(String::from) else {
++        return std::ptr::null_mut();
++    };
++    let limit = usize::try_from(limit).unwrap_or(0).min(60);
++    // SAFETY: handle came from createAssociation and is only used on the shell's main thread.
++    let association = unsafe { &*(handle as *const Association) };
++    let words = match catch_unwind(AssertUnwindSafe(|| association.after(&before, limit))) {
++        Ok(words) => words,
++        Err(_) => return std::ptr::null_mut(),
++    };
++    let json = serde_json::to_string(&words).unwrap_or_else(|_| String::from("[]"));
++    env.new_string(json)
++        .map(|s| s.into_raw())
++        .unwrap_or(std::ptr::null_mut())
++}
+diff --git a/apps/android/core/src/jni/mod.rs b/apps/android/core/src/jni/mod.rs
+index 9878f33..f97a39e 100644
+--- a/apps/android/core/src/jni/mod.rs
++++ b/apps/android/core/src/jni/mod.rs
+@@ -3,6 +3,7 @@
+ //! 句柄是 `Box<Handle>`（会话加候选条画笔）的裸指针，Kotlin 侧只在主线程调；每个出口都拦 panic，
+ //! 穿出 JNI 边界进程就没了。这里是句柄的生命周期，各个操作在 `operations`，候选条位图在 `strip`。
+ 
++mod association;
+ mod catalog;
+ mod clipboard;
+ mod cloud;
+diff --git a/apps/android/core/src/lib.rs b/apps/android/core/src/lib.rs
+index b4b0a73..0dc51a8 100644
+--- a/apps/android/core/src/lib.rs
++++ b/apps/android/core/src/lib.rs
+@@ -4,6 +4,7 @@
+ 
+ mod appearance;
+ mod assembly;
++mod association;
+ mod cloud;
+ mod error;
+ mod frame;
+@@ -16,6 +17,7 @@ mod strip;
+ mod voice;
+ 
+ pub use assembly::{assemble, assemble_translation};
++pub use association::Association;
+ pub use cloud::{CloudSettings, test_connection};
+ pub use error::AndroidError;
+ pub use frame::{Frame, FrameCandidate, FrameSense};
+diff --git a/crates/qingjian-lm/src/bigram_model.rs b/crates/qingjian-lm/src/bigram_model.rs
+index 5bd850a..660febe 100644
+--- a/crates/qingjian-lm/src/bigram_model.rs
++++ b/crates/qingjian-lm/src/bigram_model.rs
+@@ -244,6 +244,38 @@ impl BigramModel {
+         self.metadata.as_ref()
+     }
+ 
++    /// 词表里有没有这个词。
++    pub fn contains(&self, word: &str) -> bool {
++        self.word_id(word).is_some()
++    }
++
++    /// 联想（Qingshu）：`previous` 之后最常接的词，按二元计数降序，最多 `limit` 个；不含句首标记。
++    pub fn top_successors(&self, previous: &str, limit: usize) -> Vec<(&str, u32)> {
++        let Some(id) = self.word_id(previous) else {
++            return Vec::new();
++        };
++        let (Some(&start), Some(&end)) = (
++            self.offsets.get(id as usize),
++            self.offsets.get(id as usize + 1),
++        ) else {
++            return Vec::new();
++        };
++        let mut successors: Vec<Successor> = self.successors[start as usize..end as usize].to_vec();
++        successors.sort_unstable_by(|a, b| b.count.cmp(&a.count).then(a.word.cmp(&b.word)));
++        successors
++            .into_iter()
++            .filter(|s| Some(s.word) != self.start)
++            .map(|s| {
++                (
++                    word_text(&self.words, &self.entries[s.word as usize]),
++                    s.count,
++                )
++            })
++            .filter(|(word, _)| !word.is_empty())
++            .take(limit)
++            .collect()
++    }
++
+     fn word_id(&self, word: &str) -> Option<u32> {
+         hash::find(&self.index, word, |id| {
+             word_text(&self.words, &self.entries[id as usize])
+@@ -313,6 +345,15 @@ mod tests {
+     const UNIGRAM: &str = "<s>\t100\n我\t50\n想\t30\n去\t20\n翔\t1\n";
+     const BIGRAM: &str = "<s>\t我\t40\n我\t想\t25\n想\t去\t15\n我\t翔\t1\n";
+ 
++    #[test]
++    fn top_successors_are_sorted_by_count_and_skip_unknown_words() {
++        let model = BigramModel::parse(UNIGRAM, BIGRAM).unwrap();
++        assert_eq!(model.top_successors("我", 5), vec![("想", 25), ("翔", 1)]);
++        assert_eq!(model.top_successors("我", 1), vec![("想", 25)]);
++        assert!(model.top_successors("你", 5).is_empty());
++        assert!(model.contains("去") && !model.contains("你"));
++    }
++
+     #[test]
+     fn bigram_beats_unigram_and_unknown_words_are_none() {
+         let model = BigramModel::parse(UNIGRAM, BIGRAM).unwrap();
+-- 
+2.43.0
+

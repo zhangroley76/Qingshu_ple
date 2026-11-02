@@ -38,4 +38,14 @@ internal object Native {
     external fun punctuate(handle: Long, c: Char): String?
 
     external fun reset(handle: Long)
+
+    // --- Offline association (Qingshu patch, third_party/qingjian/0001-qingshu-association.patch) ---
+
+    /** Opens the language model (lm.qj) for association; returns 0 on failure. */
+    external fun createAssociation(modelPath: String): Long
+
+    external fun destroyAssociation(handle: Long)
+
+    /** Likely next words after [before] (text before the cursor), as a JSON array of strings. */
+    external fun associate(handle: Long, before: String, limit: Int): String?
 }

@@ -7,23 +7,24 @@ Qingshu 是 [Plektra](https://github.com/pkb-rocks/plektra)（Pastiera 的后续
 
 ## 编译
 
-需要 JDK 17 以上与 Android SDK（platform 36），**不需要** Rust 或 NDK。
+GitHub Actions 会在每次推送 `pinyin` 分支后自动编译，APK 发布在 Releases 的 `qingshu-latest`，模拟器测试结果在 `qingshu-emulator-test`。
+
+本地编译需要 JDK 17 以上与 Android SDK（platform 36）：
 
 ```sh
-scripts/fetch-qingjian-engine.sh            # 下载青简 v0.3.2，取出 libqingjian_android.so 与 dict.qj（约 15 MB）
-# scripts/fetch-qingjian-engine.sh --with-lm  # 另带整句语言模型 lm.qj（约 45 MB）
+scripts/fetch-qingjian-engine.sh --with-lm   # 青简 v0.3.2 的词库 dict.qj 与语言模型 lm.qj（约 60 MB）
+# 要离线联想，再从源码编译引擎（需要 rustup、cargo-ndk 与 NDK）：
+ANDROID_NDK_HOME=/path/to/ndk scripts/build-qingjian-engine.sh arm64-v8a
 ./gradlew assembleStableDebug
-adb install -r app/build/outputs/apk/stable/debug/*.apk
 ```
 
-引擎与词库不进 git（见 `.gitignore`），每个新 clone 都要先跑一次脚本。只有 arm64 引擎，所以只能在 arm64 手机上用中文。
+只跑第一行也能用，但官方预编译的引擎没有联想。Qingshu 对青简源码的修改放在 `third_party/qingjian/*.patch`。
 
-App ID 是 `io.github.zhangroley76.qingshu`，可以和 Plektra 同时安装。
+引擎与词库不进 git（见 `.gitignore`）。App ID 是 `io.github.zhangroley76.qingshu`，可以和 Plektra 同时安装。
 
 ## 启用中文
 
-1. 系统设置 → 语言和输入法 → 屏幕键盘 → 青书 Qingshu → 语言，勾选「中文 (拼音)」。
-2. 打字时用 **Shift+Space** 在中文与上一个语言之间切换；键盘栏的语言按钮、Alt+Space 也可以。
+打字时按 **Shift+Space**，或点键盘栏的语言按钮，在中文与目前的语言之间切换（按钮显示「中」表示中文）。按住 Ctrl/Fn 点语言按钮仍是轮换其他语言。
 
 ## 按键
 
@@ -41,7 +42,9 @@ App ID 是 `io.github.zhangroley76.qingshu`，可以和 Plektra 同时安装。
 | Alt+标点 | 先上屏高亮候选，再输入全角标点 | 全角标点（数字后的 . , : 保持半角） |
 | SYM | 先上屏，再开符号页 | 第一页是中文标点 |
 
-点键盘栏上的候选也能直接选。双击 Alt 锁定数字时，组字中按这些键同样是选字。
+点键盘栏上的候选也能直接选。
+
+**联想**：上屏后键盘栏显示常接在后面的词，Alt+W…V（1–9）或点选上屏，选完会继续联想；打字母、空格或其他键时联想自动消失，空格照常打空格。双击 Alt 锁定数字时，组字中按这些键同样是选字。
 
 装了 Shizuku 并开启 Plektra 的触控板手势时：在实体键盘表面左右滑可移动高亮，往上滑上屏高亮候选。
 

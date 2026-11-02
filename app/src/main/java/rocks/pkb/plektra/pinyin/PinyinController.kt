@@ -37,6 +37,12 @@ class PinyinController(
     private var lastEditUptime = 0L
     private var failureToastShown = false
 
+    /** Next-word suggestions shown after a commit, while not composing (offline association). */
+    private var associations: List<String> = emptyList()
+
+    /** Lets the user switch association off (Qingshu setting); on by default. */
+    var associationEnabled: Boolean = true
+
     /** Chinese is the current language and the field accepts free text. */
     var active: Boolean = false
         private set
@@ -129,7 +135,15 @@ class PinyinController(
             return false
         }
 
-        // Not composing.
+        // Not composing. Alt+1–9 picks a shown association; any other key dismisses them.
+        if (associations.isNotEmpty()) {
+            val digit = if (mods.alt) mods.altText?.singleOrNull() else null
+            if (digit != null && digit in '1'..'9') {
+                associations.getOrNull(digit - '1')?.let { pickAssociation(it) }
+                return true
+            }
+            clearAssociations()
+        }
         if (mods.alt) {
             val text = mods.altText
             if (text != null && text.length == 1 && isAsciiPunctuation(text[0])) {
@@ -186,6 +200,41 @@ class PinyinController(
     }
 
     fun selectHighlighted(): Boolean = selectAbsolute(highlighted)
+
+    /** Bar tap: a candidate while composing, an association otherwise. */
+    fun onBarTapped(index: Int) {
+        if (frame.isComposing) {
+            selectAbsolute(index)
+        } else {
+            associations.getOrNull(index)?.let { pickAssociation(it) }
+        }
+    }
+
+    private fun pickAssociation(word: String) {
+        commitText(word)
+        showAssociations()
+    }
+
+    private fun clearAssociations() {
+        if (associations.isEmpty()) return
+        associations = emptyList()
+        publishBar()
+    }
+
+    /** Looks up next words for the text now before the cursor and shows them. */
+    private fun showAssociations() {
+        associations = if (associationEnabled && active && engine.hasAssociation) {
+            val before = try {
+                inputConnection()?.getTextBeforeCursor(ASSOCIATION_CONTEXT, 0)?.toString().orEmpty()
+            } catch (_: Exception) {
+                ""
+            }
+            engine.associate(before, PAGE_SIZE)
+        } else {
+            emptyList()
+        }
+        publishBar()
+    }
 
     /** Commits the highlighted candidate (or the letters when there is none). */
     fun commitHighlighted() {
@@ -259,8 +308,11 @@ class PinyinController(
      * caller should skip its own selection handling).
      */
     fun onSelectionUpdate(newSelStart: Int, newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int): Boolean {
-        if (!frame.isComposing) return false
         val recentOwnEdit = SystemClock.uptimeMillis() - lastEditUptime < OWN_EDIT_WINDOW_MS
+        if (!frame.isComposing) {
+            if (associations.isNotEmpty() && !recentOwnEdit) clearAssociations()
+            return false
+        }
         val cursorAtComposingEnd = candidatesEnd >= 0 && newSelStart == newSelEnd && newSelEnd == candidatesEnd
         if (cursorAtComposingEnd || recentOwnEdit) return true
         // The user tapped elsewhere or the app dropped the composing region.
@@ -277,6 +329,7 @@ class PinyinController(
     }
 
     fun onFinishInput() {
+        associations = emptyList()
         if (frame.isComposing) {
             engine.clear()
             frame = PinyinFrame.EMPTY
@@ -307,9 +360,11 @@ class PinyinController(
             ic.endBatchEdit()
             lastEditUptime = SystemClock.uptimeMillis()
         }
+        val committedAndDone = next.commit.isNotEmpty() && !next.isComposing
         frame = next
         highlighted = 0
-        publishBar()
+        associations = emptyList()
+        if (committedAndDone) showAssociations() else publishBar()
         return true
     }
 
@@ -328,10 +383,13 @@ class PinyinController(
 
     private fun publishBar() {
         onBarChanged(
-            if (active && frame.isComposing && frame.candidates.isNotEmpty()) {
-                PinyinBarState(frame.candidates, pageStart(), highlighted)
-            } else {
-                null
+            when {
+                active && frame.isComposing && frame.candidates.isNotEmpty() ->
+                    PinyinBarState(frame.candidates, pageStart(), highlighted)
+                // Associations have no highlight: Space keeps typing a space.
+                active && !frame.isComposing && associations.isNotEmpty() ->
+                    PinyinBarState(associations, 0, -1)
+                else -> null
             }
         )
     }
@@ -344,6 +402,9 @@ class PinyinController(
 
         /** Selection updates this soon after our own edit are its echo, not a cursor move. */
         private const val OWN_EDIT_WINDOW_MS = 250L
+
+        /** Characters before the cursor used to find the previous word for association. */
+        private const val ASSOCIATION_CONTEXT = 16
 
         fun isChineseLocale(locale: String?): Boolean =
             locale != null && locale.lowercase().let { it == "zh" || it.startsWith("zh_") || it.startsWith("zh-") }

@@ -1918,7 +1918,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             onBarChanged = { state -> onPinyinBarChanged(state) }
         )
         candidatesBarController.setPinyinCallbacks(
-            onCandidateTapped = { index -> pinyinController.selectAbsolute(index) },
+            onCandidateTapped = { index -> pinyinController.onBarTapped(index) },
             onPageRequested = { forward -> pinyinController.page(forward) },
             onStep = { right -> pinyinController.step(right) }
         )

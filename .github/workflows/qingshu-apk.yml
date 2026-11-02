@@ -30,8 +30,15 @@ jobs:
           java-version: "17"
           cache: gradle
 
-      - name: Fetch Qingjian engine and dictionary
-        run: scripts/fetch-qingjian-engine.sh
+      - name: Fetch Qingjian dictionary and language model
+        run: scripts/fetch-qingjian-engine.sh --with-lm
+
+      # Built from source with Qingshu's patches (offline association), replacing the prebuilt library.
+      - name: Build the Qingjian engine (arm64)
+        run: |
+          set -o pipefail
+          cargo install cargo-ndk --locked
+          ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME" scripts/build-qingjian-engine.sh arm64-v8a 2>&1 | tee engine.log
 
       - name: Use the shared debug key (so updates install over each other)
         run: |
@@ -69,7 +76,7 @@ jobs:
           retention-days: 3
 
       - name: Report build errors
-        if: failure() && steps.build.outcome == 'failure'
+        if: failure()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -77,10 +84,11 @@ jobs:
             echo "Build of ${GITHUB_SHA} failed."
             echo
             echo '```'
-            grep -E '^e: |error:|FAILURE|What went wrong' -A3 build.log | head -c 60000 || true
+            [ -f engine.log ] && { echo '--- engine build ---'; grep -E '^error|^warning: unused|-->|failed' -A4 engine.log | head -c 30000; tail -n 30 engine.log; }
+            [ -f build.log ] && grep -E '^e: |error:|FAILURE|What went wrong' -A3 build.log | head -c 60000 || true
             echo
             echo '--- tail ---'
-            tail -n 80 build.log | head -c 20000
+            [ -f build.log ] && tail -n 80 build.log | head -c 20000
             echo '```'
           } > notes.md
           gh release delete qingshu-build-failed --yes --cleanup-tag 2>/dev/null || true
@@ -105,21 +113,15 @@ jobs:
           java-version: "17"
           cache: gradle
 
-      - name: Fetch Qingjian engine and dictionary
-        run: scripts/fetch-qingjian-engine.sh
+      - name: Fetch Qingjian dictionary and language model
+        run: scripts/fetch-qingjian-engine.sh --with-lm
 
       # Qingjian only publishes an arm64 engine; the emulator is x86_64, so build that ABI from
       # the same Qingjian release for this test APK (the phone APK stays arm64-only).
       - name: Build the Qingjian engine for x86_64
         run: |
-          git clone --depth 1 --branch v0.3.2 https://github.com/qingjian-team/qingjian.git "$RUNNER_TEMP/qingjian"
-          cd "$RUNNER_TEMP/qingjian"
-          rustup show active-toolchain || rustup toolchain install
-          rustup target add x86_64-linux-android
           cargo install cargo-ndk --locked
-          ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME" cargo ndk -t x86_64 --platform 26 \
-            -o "$GITHUB_WORKSPACE/app/src/main/jniLibs" build -p qingjian-android --release --locked
-          ls -la "$GITHUB_WORKSPACE/app/src/main/jniLibs"/*
+          ANDROID_NDK_HOME="$ANDROID_NDK_LATEST_HOME" scripts/build-qingjian-engine.sh x86_64
 
       - name: Build the test APK
         run: |

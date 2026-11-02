@@ -62,6 +62,11 @@ adb exec-out screencap -p > "$OUT/composing.png"
 key KEYCODE_SPACE
 check "nihao + Space" "你好"
 
+log "association: Alt+W picks the first next word after 你好"
+adb exec-out screencap -p > "$OUT/association.png"
+combo KEYCODE_ALT_LEFT KEYCODE_W
+check "association Alt+W" "你好的"
+
 log "woxiangquchifan, Alt+S picks the 4th (我想去), then Space"
 type_text woxiangquchifan
 adb exec-out screencap -p > "$OUT/sentence.png"
@@ -78,7 +83,7 @@ log "shuru + Backspace + Space"
 type_text shuru
 key KEYCODE_DEL
 key KEYCODE_SPACE
-check "Backspace while composing" "书"
+check "Backspace while composing (shur -> 输入)" "输入"
 
 log "Alt+N full-width comma"
 combo KEYCODE_ALT_LEFT KEYCODE_N

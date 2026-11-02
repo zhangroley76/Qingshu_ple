@@ -24,6 +24,7 @@ class PinyinEngine(context: Context) {
         Thread(runnable, "qingshu-pinyin-load").apply { isDaemon = true }
     }
     private var handle = 0L
+    private var associationHandle = 0L
     private val readyListeners = mutableListOf<() -> Unit>()
 
     var state: State = State.IDLE
@@ -50,10 +51,11 @@ class PinyinEngine(context: Context) {
             val started = System.currentTimeMillis()
             val result = runCatching { load() }
             mainHandler.post {
-                result.onSuccess { created ->
+                result.onSuccess { (created, association) ->
                     handle = created
+                    associationHandle = association
                     state = State.READY
-                    Log.i(TAG, "Engine ready in ${System.currentTimeMillis() - started} ms")
+                    Log.i(TAG, "Engine ready in ${System.currentTimeMillis() - started} ms (association=${association != 0L})")
                     val listeners = readyListeners.toList()
                     readyListeners.clear()
                     listeners.forEach { it() }
@@ -72,7 +74,7 @@ class PinyinEngine(context: Context) {
         if (state == State.FAILED) state = State.IDLE
     }
 
-    private fun load(): Long {
+    private fun load(): Pair<Long, Long> {
         val dataDir = File(appContext.filesDir, "qingjian/data")
         val userDir = File(appContext.filesDir, "qingjian/user")
         userDir.mkdirs()
@@ -84,7 +86,21 @@ class PinyinEngine(context: Context) {
             throw IllegalStateException("libqingjian_android.so missing — run scripts/fetch-qingjian-engine.sh", error)
         }
         check(created != 0L) { "engine assembly failed (see logcat tag qingjian)" }
-        return created
+        return created to loadAssociation(File(dataDir, LANGUAGE_MODEL))
+    }
+
+    /** Association is optional: it needs lm.qj and an engine built with Qingshu's patch. */
+    private fun loadAssociation(model: File): Long {
+        if (!model.isFile) {
+            Log.i(TAG, "No ${model.name}; association off")
+            return 0L
+        }
+        return try {
+            Native.createAssociation(model.absolutePath)
+        } catch (error: UnsatisfiedLinkError) {
+            Log.w(TAG, "Engine library has no association entry points; association off")
+            0L
+        }
     }
 
     /**
@@ -140,7 +156,30 @@ class PinyinEngine(context: Context) {
         }
     }
 
+    val hasAssociation: Boolean get() = isReady && associationHandle != 0L
+
+    /** Likely next words after [before] (the text before the cursor); empty when unavailable. */
+    fun associate(before: String, limit: Int): List<String> {
+        if (!hasAssociation || before.isEmpty()) return emptyList()
+        return try {
+            val json = Native.associate(associationHandle, before, limit) ?: return emptyList()
+            val array = org.json.JSONArray(json)
+            List(array.length()) { array.optString(it) }.filter { it.isNotEmpty() }
+        } catch (error: Throwable) {
+            Log.e(TAG, "associate failed", error)
+            emptyList()
+        }
+    }
+
     fun destroy() {
+        if (associationHandle != 0L) {
+            try {
+                Native.destroyAssociation(associationHandle)
+            } catch (error: Throwable) {
+                Log.e(TAG, "destroyAssociation failed", error)
+            }
+            associationHandle = 0L
+        }
         if (handle != 0L) {
             try {
                 Native.destroy(handle)
@@ -157,5 +196,6 @@ class PinyinEngine(context: Context) {
         private const val TAG = "QingshuPinyin"
         private const val ASSET_DIR = "qingjian"
         private const val DICTIONARY = "dict.qj"
+        private const val LANGUAGE_MODEL = "lm.qj"
     }
 }
