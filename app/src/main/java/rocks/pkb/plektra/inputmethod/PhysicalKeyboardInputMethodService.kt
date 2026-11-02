@@ -3366,7 +3366,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     private fun toggleChineseLanguage(): Boolean {
         val subtypes = SubtypeCycler.getAvailableSubtypes(this, PhysicalKeyboardInputMethodService::class.java)
         val chinese = subtypes.filter { rocks.pkb.plektra.pinyin.PinyinController.isChineseLocale(it.localeString()) }
-        if (chinese.isEmpty()) return false
+        if (chinese.isEmpty()) {
+            Log.w(TAG, "Shift+Space: no enabled Chinese subtype among ${subtypes.map { it.localeString() }}")
+            android.widget.Toast.makeText(this, "中文 (拼音) 未启用", android.widget.Toast.LENGTH_SHORT).show()
+            return false
+        }
         val others = subtypes - chinese.toSet()
         val currentIsChinese = rocks.pkb.plektra.pinyin.PinyinController.isChineseLocale(currentSubtypeLocale())
         val target = if (currentIsChinese) {

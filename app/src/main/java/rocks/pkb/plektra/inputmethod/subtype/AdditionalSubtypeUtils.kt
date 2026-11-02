@@ -546,6 +546,9 @@ object AdditionalSubtypeUtils {
 
         // For system subtypes (from method.xml), keep only if locale (or language root) is still in system.
         val subtypeLocale = subtype.localeString()
+        // Qingshu: pinyin is the point of this fork, so keep Chinese enabled even when the phone's
+        // system languages don't include Chinese.
+        if (rocks.pkb.plektra.pinyin.PinyinController.isChineseLocale(subtypeLocale)) return true
         val languageCode = subtypeLocale.split("_").first().lowercase()
         return currentSystemLocales.contains(subtypeLocale) || systemLanguageCodes.contains(languageCode)
     }
