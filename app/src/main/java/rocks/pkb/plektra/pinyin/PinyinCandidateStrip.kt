@@ -97,26 +97,26 @@ class PinyinCandidateStrip(context: Context) : LinearLayout(context) {
     private fun candidateView(number: Int, text: String, highlighted: Boolean, index: Int): TextView {
         val label = SpannableStringBuilder().apply {
             append(number.toString())
-            setSpan(RelativeSizeSpan(0.7f), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            setSpan(RelativeSizeSpan(0.65f), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             setSpan(
                 ForegroundColorSpan((textColor and 0x00FFFFFF) or 0x99000000.toInt()),
                 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
             )
-            append(' ')
             append(text)
         }
         return TextView(context).apply {
             this.text = label
             setTextColor(textColor)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+            // Small enough that a page of nine usually fits the Titan 2's square screen.
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
             includeFontPadding = false
             maxLines = 1
             gravity = Gravity.CENTER
-            setPadding(dp(10), 0, dp(10), 0)
+            setPadding(dp(5), 0, dp(5), 0)
             layoutParams = LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
-            ).apply { marginEnd = dp(2) }
+            ).apply { marginEnd = dp(1) }
             background = if (highlighted) {
                 GradientDrawable().apply {
                     cornerRadius = dp(6).toFloat()
@@ -137,9 +137,9 @@ class PinyinCandidateStrip(context: Context) : LinearLayout(context) {
         TextView(context).apply {
             text = label
             setTextColor(textColor)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
             gravity = Gravity.CENTER
-            setPadding(dp(8), 0, dp(8), 0)
+            setPadding(dp(4), 0, dp(4), 0)
             layoutParams = LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
