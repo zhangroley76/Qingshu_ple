@@ -161,6 +161,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     /** Locale of the last non-Chinese language, the target of Shift+Space from Chinese. */
     private var lastNonChineseSubtypeLocale: String? = null
     private var pinyinBarVisible = false
+    // Qingshu: physical Alt/Shift held state (after the Shift/Alt swap), tracked directly from
+    // key events so pinyin selection does not depend on Plektra's tap/hold/latch bookkeeping.
+    private var qsAltHeld = false
+    private var qsShiftHeld = false
+    // A modifier hold that selected pinyin candidates must not turn into a layer or latch.
+    private var qsModifierUsedForPinyin = false
     private lateinit var textExpansionController: TextExpansionController
     private lateinit var emojiShortcodeSource: EmojiShortcodeSource
     private lateinit var symbolShortcodeSource: SymbolShortcodeSource
@@ -3385,9 +3391,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         SettingsManager.getPreferences(this).getBoolean(rocks.pkb.plektra.pinyin.QingshuMode.PREF_CHINESE_MODE, false)
 
     private fun isShiftSpaceChord(event: KeyEvent?): Boolean {
-        val shift = event?.isShiftPressed == true || shiftPressed ||
+        val shift = qsShiftHeld || event?.isShiftPressed == true || shiftPressed ||
             modifierStateController.shiftPhysicallyPressed || shiftOneShot || shiftLayerLatched
-        val alt = event?.isAltPressed == true || altPressed || altPhysicallyPressed || altLatchActive || altOneShot
+        val alt = qsAltHeld || event?.isAltPressed == true || altPressed || altPhysicallyPressed || altLatchActive || altOneShot
         val ctrl = event?.isCtrlPressed == true || ctrlPressed || ctrlPhysicallyPressed ||
             ctrlLatchActive || ctrlOneShot || ctrlLatchFromNavMode
         if (event == null || event.repeatCount != 0) return false
@@ -3432,6 +3438,51 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
      * Pinyin key handling, run after Plektra's modifier bookkeeping and language shortcuts.
      * Returns true when the key was consumed.
      */
+    private fun trackQingshuModifier(keyCode: Int, down: Boolean, repeat: Int) {
+        when (keyCode) {
+            KeyEvent.KEYCODE_ALT_LEFT, KeyEvent.KEYCODE_ALT_RIGHT -> {
+                if (down && repeat == 0 && !qsAltHeld && !qsShiftHeld) qsModifierUsedForPinyin = false
+                qsAltHeld = down
+            }
+            KeyEvent.KEYCODE_SHIFT_LEFT, KeyEvent.KEYCODE_SHIFT_RIGHT -> {
+                if (down && repeat == 0 && !qsAltHeld && !qsShiftHeld) qsModifierUsedForPinyin = false
+                qsShiftHeld = down
+            }
+        }
+    }
+
+    /**
+     * Releasing an Alt/Shift that was held to pick pinyin candidates: clear every modifier
+     * state the press created (one-shot, latch, hold layer) instead of running Plektra's
+     * tap/hold logic, so the next selection starts clean however long the key was held.
+     */
+    private fun qingshuModifierReleaseAfterPinyin(keyCode: Int, event: KeyEvent?): Boolean {
+        val isAlt = keyCode == KeyEvent.KEYCODE_ALT_LEFT || keyCode == KeyEvent.KEYCODE_ALT_RIGHT
+        val isShift = keyCode == KeyEvent.KEYCODE_SHIFT_LEFT || keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT
+        if (!isAlt && !isShift) return false
+        trackQingshuModifier(keyCode, down = false, repeat = 0)
+        if (!qsModifierUsedForPinyin) return false
+        if (!qsAltHeld && !qsShiftHeld) qsModifierUsedForPinyin = false
+        Log.d(TAG, "Pinyin: modifier ${KeyEvent.keyCodeToString(keyCode)} released after selection")
+        if (isAlt) {
+            modifierStateController.clearAltState(resetPressedState = true)
+            altModifierLayerLatched = false
+            lastAltTapUpTime = 0L
+        } else {
+            modifierStateController.clearShiftState(resetPressedState = true)
+            shiftLayerLatched = false
+            lastShiftTapUpTime = 0L
+        }
+        modifierDownTimes.remove(keyCode)
+        modifierStateBeforeHold = null
+        variationInteractedDuringHold = false
+        otherKeyInteractedDuringHold = false
+        invalidateRenderedStatusSnapshot()
+        updateStatusBarText()
+        super.onKeyUp(keyCode, event)
+        return true
+    }
+
     private fun handlePinyinKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         if (!::pinyinController.isInitialized) return false
         if (pinyinController.active) {
@@ -3461,10 +3512,26 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
                 ctrlOrMeta = ctrl || meta,
                 altText = if (alt) alternateCharacterManager.getAltModifierMappings()[keyCode] else null,
                 overlayActive = symLayoutController.isSymActive() || navModeController.isNavModeActive(),
-                altLocked = altLatchActive
+                // A physically held Alt means "select", even when Alt is also locked for numbers.
+                altLocked = altLatchActive && !qsAltHeld
             )
         )
         if (consumed) {
+            if (qsAltHeld || qsShiftHeld) {
+                // The held modifier was used as a chord: never let its release start Plektra's
+                // hold layer, a double-tap latch or a one-shot.
+                qsModifierUsedForPinyin = true
+                otherKeyInteractedDuringHold = true
+                variationInteractedDuringHold = false
+                lastAltTapUpTime = 0L
+                lastShiftTapUpTime = 0L
+            }
+            if (altModifierLayerLatched || shiftLayerLatched) {
+                altModifierLayerLatched = false
+                shiftLayerLatched = false
+                modifierStateBeforeHold = null
+                updateStatusBarText()
+            }
             // An Alt or Shift tap applies to one key only; a latched Alt (number lock) stays.
             var modifiersChanged = false
             if (altOneShot && alt) {
@@ -4031,6 +4098,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     }
 
     override fun onFinishInput() {
+        // Key-ups can go to another window after focus moves; don't leave a modifier "held".
+        qsAltHeld = false
+        qsShiftHeld = false
+        qsModifierUsedForPinyin = false
         cancelSpeechRecognition()
         ++speechEditorSession
         disableSmoothCaretExperiment()
@@ -4876,6 +4947,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         if (remapped.consume) return true
         val keyCode = remapped.keyCode
         val event = remapped.event
+        if (qingshuModifierReleaseAfterPinyin(keyCode, event)) return true
         // Handle long press even when the keyboard is hidden but we still have a valid InputConnection.
         val inputConnection = currentInputConnection
         if (inputConnection == null) {
@@ -4940,6 +5012,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         }
         val keyCode = remapped.keyCode
         val event = remapped.event
+        trackQingshuModifier(keyCode, down = true, repeat = event?.repeatCount ?: 0)
         clicksPowerShiftTapFilter.shouldConsumeKeyDown(
             isClicksPowerKeyboard = DeviceSpecific.resolveInputProfile(
                 event,

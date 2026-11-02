@@ -97,7 +97,7 @@ class PinyinCandidateStrip(context: Context) : LinearLayout(context) {
     private fun candidateView(number: Int, text: String, highlighted: Boolean, index: Int): TextView {
         val label = SpannableStringBuilder().apply {
             append(number.toString())
-            setSpan(RelativeSizeSpan(0.65f), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            setSpan(RelativeSizeSpan(0.6f), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             setSpan(
                 ForegroundColorSpan((textColor and 0x00FFFFFF) or 0x99000000.toInt()),
                 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
@@ -108,11 +108,11 @@ class PinyinCandidateStrip(context: Context) : LinearLayout(context) {
             this.text = label
             setTextColor(textColor)
             // Small enough that a page of nine usually fits the Titan 2's square screen.
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             includeFontPadding = false
             maxLines = 1
             gravity = Gravity.CENTER
-            setPadding(dp(5), 0, dp(5), 0)
+            setPadding(dp(4), 0, dp(4), 0)
             layoutParams = LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
@@ -137,9 +137,9 @@ class PinyinCandidateStrip(context: Context) : LinearLayout(context) {
         TextView(context).apply {
             text = label
             setTextColor(textColor)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
             gravity = Gravity.CENTER
-            setPadding(dp(4), 0, dp(4), 0)
+            setPadding(dp(3), 0, dp(3), 0)
             layoutParams = LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.MATCH_PARENT

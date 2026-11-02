@@ -76,6 +76,16 @@ log "association: Space picks the next one instead of typing a space"
 key KEYCODE_SPACE
 check_absent "Space picks association" "的 "
 
+log "long-held Alt chords: Alt+W held 800 ms twice in a row both select (no hold layer)"
+type_text dajia
+adb shell input keycombination -t 800 KEYCODE_ALT_LEFT KEYCODE_W 2>/dev/null || adb shell input keycombination KEYCODE_ALT_LEFT KEYCODE_W
+sleep 0.8
+check "held Alt+W picks 大家" "大家"
+adb shell input keycombination -t 800 KEYCODE_ALT_LEFT KEYCODE_W 2>/dev/null || adb shell input keycombination KEYCODE_ALT_LEFT KEYCODE_W
+sleep 0.8
+check_absent "second held Alt+W picks an association, not 1" "大家1"
+key KEYCODE_BACK
+
 log "Back dismisses associations, then Space types a space"
 key KEYCODE_BACK
 key KEYCODE_SPACE
