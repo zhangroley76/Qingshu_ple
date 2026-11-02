@@ -209,7 +209,14 @@ class SymLayoutController(
         return cycle[nextIndex]
     }
 
+    /**
+     * Full-width Chinese punctuation that replaces the Symbols page while Chinese is the active
+     * language; it is also the first page SYM opens. Null restores the normal Symbols page.
+     */
+    var chineseSymbolsOverride: Map<Int, String>? = null
+
     private fun mappingsForPage(pageToUse: SymPage, shiftPressed: Boolean): Map<Int, String> {
+        if (pageToUse == SymPage.SYMBOLS) chineseSymbolsOverride?.let { return it }
         return when (pageToUse) {
             SymPage.DEVICE -> alternateCharacterManager.getDeviceSymMappings()
             SymPage.EMOJI -> if (shiftPressed) {
@@ -324,6 +331,12 @@ class SymLayoutController(
     }
 
     private fun buildActivePages(config: SymPagesConfig = SettingsManager.getSymPagesConfig(context)): List<SymPage> {
+        val pages = configuredPages(config)
+        // Chinese punctuation is needed constantly, so it comes first while Chinese is active.
+        return if (chineseSymbolsOverride != null) listOf(SymPage.SYMBOLS) + (pages - SymPage.SYMBOLS) else pages
+    }
+
+    private fun configuredPages(config: SymPagesConfig): List<SymPage> {
         return config.enabledOrderedPages().mapNotNull { pageId ->
             when (pageId) {
                 SymPagesConfig.PAGE_DEVICE -> SymPage.DEVICE

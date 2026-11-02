@@ -406,6 +406,24 @@ class CandidatesBarController(
         candidatesStatusBar.clearExpansionSuggestions()
     }
 
+    /** Pinyin candidates for both bars; null hides them. Takes effect on the next status bar update. */
+    fun setPinyinBarState(state: rocks.pkb.plektra.pinyin.PinyinBarState?) {
+        inputStatusBar.setPinyinBarState(state)
+        candidatesStatusBar.setPinyinBarState(state)
+    }
+
+    fun setPinyinCallbacks(
+        onCandidateTapped: (Int) -> Unit,
+        onPageRequested: (Boolean) -> Unit,
+        onStep: (Boolean) -> Boolean
+    ) {
+        for (bar in listOf(inputStatusBar, candidatesStatusBar)) {
+            bar.onPinyinCandidateTapped = onCandidateTapped
+            bar.onPinyinPageRequested = onPageRequested
+            bar.onPinyinStep = onStep
+        }
+    }
+
     fun cancelSoftwareKeyboardTouchState() {
         inputStatusBar.cancelSoftwareKeyboardTouchState()
         candidatesStatusBar.cancelSoftwareKeyboardTouchState()

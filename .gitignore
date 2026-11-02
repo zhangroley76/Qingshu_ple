@@ -48,3 +48,7 @@ __pycache__/
 
 # Local STT credentials
 /.env
+
+# Qingjian engine and dictionary (scripts/fetch-qingjian-engine.sh)
+/app/src/main/jniLibs/arm64-v8a/libqingjian_android.so
+/app/src/main/assets/qingjian/

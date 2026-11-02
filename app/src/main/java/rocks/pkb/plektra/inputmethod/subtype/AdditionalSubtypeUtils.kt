@@ -31,7 +31,7 @@ object AdditionalSubtypeUtils {
     private const val EXTRA_KEY_IS_ADDITIONAL_SUBTYPE = "isAdditionalSubtype"
     private val BASE_SUBTYPE_LOCALES = setOf(
         "en_US", "it_IT", "fr_FR", "de_DE", "pl_PL", "da_DK",
-        "no_NO", "es_ES", "pt_PT", "ru_RU", "sr_RS", "uk_UA"
+        "no_NO", "es_ES", "pt_PT", "ru_RU", "sr_RS", "uk_UA", "zh_CN"
     )
 
     fun InputMethodSubtype.localeString(): String =

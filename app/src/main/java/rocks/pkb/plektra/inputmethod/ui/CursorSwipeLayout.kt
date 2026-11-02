@@ -13,6 +13,11 @@ import kotlin.math.abs
 internal class CursorSwipeLayout(context: Context) : FrameLayout(context) {
     var connection: () -> InputConnection? = { null }
     var onCursorMoved: () -> Unit = {}
+    /**
+     * When set (pinyin candidates are showing), horizontal drags step through candidates instead
+     * of moving the editor cursor. Returns whether the step moved anything.
+     */
+    var stepOverride: ((right: Boolean) -> Boolean)? = null
     private var startX = 0f
     private var startY = 0f
     private var lastX = 0f
@@ -26,7 +31,7 @@ internal class CursorSwipeLayout(context: Context) : FrameLayout(context) {
             }
             MotionEvent.ACTION_MOVE -> {
                 if (abs(event.x - startX) > slop && abs(event.x - startX) > abs(event.y - startY)) {
-                    dragging = connection() != null
+                    dragging = stepOverride != null || connection() != null
                     if (dragging) parent?.requestDisallowInterceptTouchEvent(true)
                 }
             }
@@ -38,6 +43,17 @@ internal class CursorSwipeLayout(context: Context) : FrameLayout(context) {
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (!dragging) return super.onTouchEvent(event)
         if (event.actionMasked == MotionEvent.ACTION_MOVE) {
+            val step = stepOverride
+            if (step != null) {
+                // Candidates are wider than characters, so take a larger step than the cursor does.
+                val candidateThreshold = (CANDIDATE_STEP_DP * resources.displayMetrics.density).coerceAtLeast(1f)
+                while (abs(event.x - lastX) >= candidateThreshold) {
+                    val right = event.x > lastX
+                    lastX += if (right) candidateThreshold else -candidateThreshold
+                    if (!step(right)) { lastX = event.x; break }
+                }
+                return true
+            }
             val threshold = (SettingsManager.getSwipeIncrementalThreshold(context) *
                 resources.displayMetrics.density).coerceAtLeast(1f)
             val input = connection() ?: return true
@@ -54,5 +70,9 @@ internal class CursorSwipeLayout(context: Context) : FrameLayout(context) {
             parent?.requestDisallowInterceptTouchEvent(false)
         }
         return true
+    }
+
+    private companion object {
+        const val CANDIDATE_STEP_DP = 32f
     }
 }

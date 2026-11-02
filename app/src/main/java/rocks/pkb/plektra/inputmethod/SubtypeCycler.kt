@@ -124,6 +124,32 @@ object SubtypeCycler {
         }
     }
     
+    /** Switches directly to [target] (one of [getAvailableSubtypes]). */
+    fun switchToSubtype(
+        context: Context,
+        imeServiceClass: Class<*>,
+        assets: AssetManager,
+        target: InputMethodSubtype,
+        showToast: Boolean = true
+    ): Boolean {
+        return try {
+            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+                ?: return false
+            val inputMethodInfo = imm.getInputMethodList().firstOrNull { info ->
+                info.packageName == context.packageName && info.serviceName == imeServiceClass.name
+            } ?: return false
+            val switched = trySwitchSubtype(imm, inputMethodInfo.id, target, context)
+            if (switched) {
+                SettingsManager.setKeyboardLayout(context, resolveSubtypeCycleLayout(assets, context, target))
+                if (showToast) showUnifiedSubtypeToast(context, target, assets)
+            }
+            switched
+        } catch (e: Exception) {
+            Log.e(TAG, "Error switching to subtype", e)
+            false
+        }
+    }
+
     /**
      * Attempts to switch to the specified subtype using setInputMethodAndSubtype.
      * This method requires the IME window token, which may not always be available.

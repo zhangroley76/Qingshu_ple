@@ -106,7 +106,7 @@ android {
     val isFdroidBuild = gradleBooleanProperty("PLEKTRA_FDROID_BUILD")
     val isUnsignedReleaseBuild = gradleBooleanProperty("PLEKTRA_UNSIGNED_RELEASE_BUILD")
     val githubRepository = providers.gradleProperty("PLEKTRA_GITHUB_REPOSITORY")
-        .orNull ?: "pkb-rocks/plektra"
+        .orNull ?: "zhangroley76/Qingshu_ple"
     if (!githubRepository.matches(Regex("[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+"))) {
         throw GradleException(
             "PLEKTRA_GITHUB_REPOSITORY must have the form owner/repository"
@@ -114,7 +114,8 @@ android {
     }
 
     defaultConfig {
-        applicationId = "rocks.pkb.plektra"
+        // Qingshu fork: its own application ID so it installs next to Plektra.
+        applicationId = "io.github.zhangroley76.qingshu"
         minSdk = 29
         targetSdk = 36
         versionCode = ciVersionCode ?: defaultVersionCode
@@ -164,8 +165,8 @@ android {
     productFlavors {
         create("stable") {
             dimension = "channel"
-            manifestPlaceholders["appLabel"] = "Plektra"
-            manifestPlaceholders["imeLabel"] = "Plektra"
+            manifestPlaceholders["appLabel"] = "青书 Qingshu"
+            manifestPlaceholders["imeLabel"] = "青书 Qingshu"
             manifestPlaceholders["appIcon"] = "@mipmap/ic_launcher"
             manifestPlaceholders["appRoundIcon"] = "@mipmap/ic_launcher_round"
             manifestPlaceholders["closedOrangeLauncherEnabled"] = "true"
@@ -175,7 +176,8 @@ android {
             buildConfigField("String", "RELEASE_CHANNEL", "\"stable\"")
             buildConfigField("String", "DISTRIBUTION_CHANNEL", "\"direct\"")
             buildConfigField("boolean", "IS_FDROID_BUILD", if (isFdroidBuild) "true" else "false")
-            buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_CHECKS", if (isFdroidBuild) "false" else "true")
+            // Qingshu publishes no releases for Plektra's update checker to find.
+            buildConfigField("boolean", "ENABLE_GITHUB_UPDATE_CHECKS", "false")
             val storePath = signingProp("storeFile", "PLEKTRA_KEYSTORE_PATH")
             val storePass = signingProp("storePassword", "PLEKTRA_KEYSTORE_PASSWORD")
             val alias = signingProp("keyAlias", "PLEKTRA_KEY_ALIAS")

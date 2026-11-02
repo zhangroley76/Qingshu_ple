@@ -464,6 +464,49 @@ class FullSuggestionsBar(
         lastSlots = slots
     }
 
+    private var pinyinStrip: rocks.pkb.plektra.pinyin.PinyinCandidateStrip? = null
+
+    /**
+     * Covers the suggestion row with the pinyin candidate strip. Call after [update] (which may make
+     * the regular row visible again) whenever the composition changes.
+     */
+    fun showPinyin(
+        state: rocks.pkb.plektra.pinyin.PinyinBarState,
+        background: Int,
+        onCandidateTapped: (Int) -> Unit,
+        onPageRequested: (Boolean) -> Unit,
+        onStep: (Boolean) -> Boolean
+    ) {
+        val frame = ensureView()
+        val strip = pinyinStrip ?: rocks.pkb.plektra.pinyin.PinyinCandidateStrip(context).also {
+            frame.addView(
+                it,
+                FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, targetHeightPx)
+            )
+            pinyinStrip = it
+        }
+        strip.setColors(themeOverride?.textAndIcons ?: Color.WHITE)
+        strip.setBackgroundColor(background)
+        strip.onCandidateTapped = onCandidateTapped
+        strip.onPageRequested = onPageRequested
+        strip.render(state.candidates, state.pageStart, state.highlighted)
+        strip.visibility = View.VISIBLE
+        strip.bringToFront()
+        container?.visibility = View.INVISIBLE
+        frame.visibility = View.VISIBLE
+        frame.alpha = 1f
+        (frame as? rocks.pkb.plektra.inputmethod.ui.CursorSwipeLayout)?.stepOverride = onStep
+    }
+
+    fun hidePinyin() {
+        val strip = pinyinStrip ?: return
+        if (strip.visibility != View.GONE) {
+            strip.visibility = View.GONE
+            if (container?.visibility == View.INVISIBLE) container?.visibility = View.VISIBLE
+        }
+        (frameContainer as? rocks.pkb.plektra.inputmethod.ui.CursorSwipeLayout)?.stepOverride = null
+    }
+
     fun showPreview(suggestions: List<String>, showStatusButton: Boolean = false) {
         val frame = ensureView()
         val bar = container ?: return

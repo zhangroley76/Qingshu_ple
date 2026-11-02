@@ -18,6 +18,8 @@ import java.io.InputStreamReader
 class TrackpadGestureDetector(
     private val isEnabled: () -> Boolean,
     private val onSwipeUp: (third: Int) -> Unit,
+    /** Horizontal swipe in candidate-sized steps (positive = right); used to move the pinyin highlight. */
+    private val onSwipeHorizontal: ((steps: Int) -> Unit)? = null,
     private val scope: CoroutineScope,
     private val eventDeviceSelection: String = AUTO_EVENT_DEVICE,
     private val fallbackEventDevice: String = DEFAULT_EVENT_DEVICE,
@@ -222,12 +224,25 @@ class TrackpadGestureDetector(
                 ">>> SWIPE UP DETECTED in third $third (deltaY=$deltaY, absDeltaX=$absDeltaX, velocity=${String.format("%.2f", velocity)} px/ms, duration=${String.format("%.1f", durationMs)}ms, startX=$startX, xRange=${trackpadXRange.min}..${trackpadXRange.max}) <<<"
             )
             onSwipeUp(third)
+            return
+        }
+
+        // Primarily horizontal swipe: report it in steps of HORIZONTAL_STEP device units.
+        val horizontal = onSwipeHorizontal ?: return
+        val absDeltaY = kotlin.math.abs(deltaY)
+        if (absDeltaX >= HORIZONTAL_STEP && absDeltaY < absDeltaX / 2) {
+            val steps = (deltaX / HORIZONTAL_STEP).coerceIn(-MAX_HORIZONTAL_STEPS, MAX_HORIZONTAL_STEPS)
+            Log.d(logTag, ">>> HORIZONTAL SWIPE steps=$steps (deltaX=$deltaX, deltaY=$deltaY) <<<")
+            if (steps != 0) horizontal(steps)
         }
     }
 
     companion object {
         const val DEFAULT_TRACKPAD_MAX_X = 1440
         const val DEFAULT_SWIPE_UP_THRESHOLD = 300
+        /** Trackpad units per candidate step (the Titan 2 reports about 1440 across). */
+        const val HORIZONTAL_STEP = 120
+        const val MAX_HORIZONTAL_STEPS = 9
         const val DEFAULT_MIN_VELOCITY_THRESHOLD = 2.0  // pixels per millisecond (e.g., 1.0 px/ms = 1000 px/s)
         const val DEFAULT_EVENT_DEVICE = TrackpadEventDeviceResolver.LEGACY_EVENT_DEVICE
         const val AUTO_EVENT_DEVICE = "auto"

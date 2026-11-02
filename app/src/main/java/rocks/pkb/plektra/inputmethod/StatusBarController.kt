@@ -363,7 +363,7 @@ class StatusBarController(
         get() = slimModeActive && buttonRegistry.getEnabledSlimButtons(context).isNotEmpty()
     private var hasTransientSurface: Boolean = false
     val hasTransientContent: Boolean
-        get() = hasTransientSurface || expansionSuggestions.isNotEmpty()
+        get() = hasTransientSurface || expansionSuggestions.isNotEmpty() || pinyinBarState != null
     private var fullSuggestionsBar: FullSuggestionsBar? = null
     private var expansionSuggestions: List<String> = emptyList()
     private var onExpansionSuggestionSelected: ((String) -> Unit)? = null
@@ -870,6 +870,16 @@ class StatusBarController(
     fun clearExpansionSuggestions() {
         expansionSuggestions = emptyList()
         onExpansionSuggestionSelected = null
+    }
+
+    private var pinyinBarState: rocks.pkb.plektra.pinyin.PinyinBarState? = null
+    var onPinyinCandidateTapped: ((Int) -> Unit)? = null
+    var onPinyinPageRequested: ((Boolean) -> Unit)? = null
+    var onPinyinStep: ((Boolean) -> Boolean)? = null
+
+    /** Shows (or with null, hides) the pinyin candidate strip on the next [update]. */
+    fun setPinyinBarState(state: rocks.pkb.plektra.pinyin.PinyinBarState?) {
+        pinyinBarState = state
     }
 
     fun cancelSoftwareKeyboardTouchState() {
@@ -3044,10 +3054,14 @@ class StatusBarController(
         val showSlimMenuButtons = hasConfiguredMenuButtons && !isFullSoftwareKeyboardMode &&
             snapshot.symPage == 0 && !snapshot.clipboardOverlay
         val expansionActive = expansionSuggestions.isNotEmpty()
+        val pinyinState = pinyinBarState?.takeIf {
+            snapshot.symPage == 0 && !snapshot.clipboardOverlay && !snapshot.navModeActive
+        }
+        val pinyinActive = pinyinState != null
         val suggestionsAvailable = barPresentation.suggestions && !snapshot.shouldDisableSuggestions &&
             (SettingsManager.isExperimentalSuggestionsEnabled(context) || isFullSoftwareKeyboardMode || snapshot.speechPreviewActive) &&
             (snapshot.suggestions.isNotEmpty() || !snapshot.addWordCandidate.isNullOrBlank())
-        val hasSuggestionRow = expansionActive || suggestionsAvailable
+        val hasSuggestionRow = expansionActive || pinyinActive || suggestionsAvailable
         fullSuggestionsBar?.onCursorMovedListener = onCursorMovedListener
         variationBarView?.forceVariationAreaVisible = barPresentation.actions
         variationBarView?.setSymModeActive((snapshot.symPage > 0 && !isSoftwareKeyboardOverlayPage) || snapshot.clipboardOverlay)
@@ -3067,6 +3081,7 @@ class StatusBarController(
         val layout = ensureLayoutCreated(emojiMapText) ?: return
         if ((!hasSuggestionRow && !showSlimMenuButtons && !barPresentation.actions && !barPresentation.bottomIndicators && !isFullSoftwareKeyboardMode &&
                 snapshot.symPage == 0 && !snapshot.clipboardOverlay && expansionSuggestions.isEmpty()) || snapshot.navModeActive) {
+            fullSuggestionsBar?.hidePinyin()
             collapseLayout()
             return
         }
@@ -3133,14 +3148,15 @@ class StatusBarController(
             else emptyList()
         } else emptyList()
         val rowContent = when {
+            pinyinActive -> emptyList()
             expansionActive -> expansionSuggestions
             sharedVariations.isNotEmpty() -> sharedVariations
             suggestionsAvailable -> snapshot.suggestions
             else -> emptyList()
         }
-        fullSuggestionsBar?.setContentEnabled(suggestionsEnabledSetting || expansionActive || sharedVariations.isNotEmpty(),
+        fullSuggestionsBar?.setContentEnabled(suggestionsEnabledSetting || expansionActive || pinyinActive || sharedVariations.isNotEmpty(),
             menuButtons = showSlimMenuButtons || (sharedRow && barPresentation.actions))
-        val showFullBar = expansionActive || (sharedRow && barPresentation.actions) || (
+        val showFullBar = expansionActive || pinyinActive || (sharedRow && barPresentation.actions) || (
             suggestionsEnabledSetting &&
                 (experimentalEnabled || isFullSoftwareKeyboardMode || snapshot.speechPreviewActive) &&
                 (isFullSoftwareKeyboardMode || !snapshot.shouldDisableSuggestions) &&
@@ -3175,11 +3191,22 @@ class StatusBarController(
                 }
                 else -> null
             },
-            reserveEmptyRow = isFullSoftwareKeyboardMode && suggestionsEnabledSetting,
+            reserveEmptyRow = pinyinActive || (isFullSoftwareKeyboardMode && suggestionsEnabledSetting),
             displayOnly = snapshot.speechPreviewActive && !expansionActive && sharedVariations.isEmpty(),
             continuousPreview = snapshot.speechPreviewActive && !expansionActive && sharedVariations.isEmpty() &&
                 rocks.pkb.plektra.inputmethod.speech.SpeechSettings.continuousPreview(context)
         )
+        if (pinyinState != null) {
+            fullSuggestionsBar?.showPinyin(
+                state = pinyinState,
+                background = activeTheme.background,
+                onCandidateTapped = { index -> onPinyinCandidateTapped?.invoke(index) },
+                onPageRequested = { forward -> onPinyinPageRequested?.invoke(forward) },
+                onStep = { right -> onPinyinStep?.invoke(right) ?: false }
+            )
+        } else {
+            fullSuggestionsBar?.hidePinyin()
+        }
         ledStatusView.compactOnly = fullSuggestionsBar?.ensureView()?.visibility != View.VISIBLE && !barPresentation.actions && !hasTransientSurface
         val ledOnly = ledStatusView.compactOnly && showLedStrip
         (statusBarLayout as? ImeChromeLayout)?.ledOnlyReservedHeightPx =

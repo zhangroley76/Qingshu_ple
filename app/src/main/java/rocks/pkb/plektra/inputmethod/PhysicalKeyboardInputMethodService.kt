@@ -157,6 +157,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     private lateinit var smoothCaretOverlayController: SmoothCaretOverlayController
     private var smoothCaretEditorHidden = false
     private lateinit var candidatesBarController: CandidatesBarController
+    private lateinit var pinyinController: rocks.pkb.plektra.pinyin.PinyinController
+    /** Locale of the last non-Chinese language, the target of Shift+Space from Chinese. */
+    private var lastNonChineseSubtypeLocale: String? = null
+    private var pinyinBarVisible = false
     private lateinit var textExpansionController: TextExpansionController
     private lateinit var emojiShortcodeSource: EmojiShortcodeSource
     private lateinit var symbolShortcodeSource: SymbolShortcodeSource
@@ -255,6 +259,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
 
     private val shouldDisableAutoCapitalize: Boolean
         get() {
+            // Chinese has no capitals; an auto-cap Shift would turn the first pinyin letter into English.
+            if (::pinyinController.isInitialized && pinyinController.active) return true
             if (!inputContextState.shouldDisableAutoCapitalize) return false
             // Explicit app or field opt-outs take priority over the optional
             // capitalization of restricted field types such as email and URL.
@@ -1903,6 +1909,17 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         startClipboardCleanupTimer()
 
         candidatesBarController = CandidatesBarController(this, clipboardHistoryManager, assets, PhysicalKeyboardInputMethodService::class.java)
+        pinyinController = rocks.pkb.plektra.pinyin.PinyinController(
+            context = this,
+            inputConnection = { currentInputConnection },
+            onBarChanged = { state -> onPinyinBarChanged(state) }
+        )
+        candidatesBarController.setPinyinCallbacks(
+            onCandidateTapped = { index -> pinyinController.selectAbsolute(index) },
+            onPageRequested = { forward -> pinyinController.page(forward) },
+            onStep = { right -> pinyinController.step(right) }
+        )
+        updatePinyinActive()
         val snippetExpansionSource = SnippetExpansionSource {
             SettingsManager.getSnippets(this)
         }
@@ -2912,7 +2929,21 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         )
         return TrackpadGestureDetector(
             isEnabled = { shouldStartShizukuTrackpadDetector() },
-            onSwipeUp = { third -> acceptSuggestionAtIndex(third) },
+            onSwipeUp = { third ->
+                if (::pinyinController.isInitialized && pinyinController.isComposing) {
+                    // While composing, swiping up on the keyboard picks the highlighted candidate.
+                    uiHandler.post { pinyinController.selectHighlighted() }
+                } else {
+                    acceptSuggestionAtIndex(third)
+                }
+            },
+            onSwipeHorizontal = { steps ->
+                uiHandler.post {
+                    if (::pinyinController.isInitialized && pinyinController.isComposing) {
+                        repeat(kotlin.math.abs(steps)) { pinyinController.step(steps > 0) }
+                    }
+                }
+            },
             scope = trackpadScope,
             swipeUpThreshold = swipeThreshold,
             eventDeviceSelection = eventDeviceSelection,
@@ -2928,6 +2959,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     }
     
     override fun onDestroy() {
+        if (::pinyinController.isInitialized) pinyinController.destroy()
         disableSmoothCaretExperiment()
         if (::smoothCaretOverlayController.isInitialized) smoothCaretOverlayController.release()
         caretBadgeController.destroy()
@@ -3291,6 +3323,119 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
      */
     private fun ensureImeSurfaceVisible() {
         keyboardVisibilityController.ensureImeSurfaceVisible()
+    }
+
+    // --- Pinyin (Qingshu) ---------------------------------------------------------------------
+
+    private fun onPinyinBarChanged(state: rocks.pkb.plektra.pinyin.PinyinBarState?) {
+        if (!::candidatesBarController.isInitialized) return
+        val wasVisible = pinyinBarVisible
+        pinyinBarVisible = state != null
+        candidatesBarController.setPinyinBarState(state)
+        if (state == null && !wasVisible) return
+        // The bar may be configured to stay hidden; candidates must still be visible.
+        if (state != null && !wasVisible) ensureImeSurfaceVisible()
+        updateStatusBarText()
+    }
+
+    private fun currentSubtypeLocale(): String? = try {
+        getSystemService(InputMethodManager::class.java)?.currentInputMethodSubtype?.localeString()
+    } catch (_: Exception) {
+        null
+    }
+
+    /** Re-evaluates whether pinyin handles keys for the current language and field. */
+    private fun updatePinyinActive(
+        subtypeLocale: String? = currentSubtypeLocale(),
+        editorInfo: EditorInfo? = currentInputEditorInfo
+    ) {
+        if (!::pinyinController.isInitialized) return
+        val chinese = rocks.pkb.plektra.pinyin.PinyinController.isChineseLocale(subtypeLocale)
+        if (!chinese && !subtypeLocale.isNullOrBlank()) lastNonChineseSubtypeLocale = subtypeLocale
+        if (::symLayoutController.isInitialized) {
+            symLayoutController.chineseSymbolsOverride =
+                if (chinese) rocks.pkb.plektra.pinyin.ChineseSymbols.MAPPINGS else null
+        }
+        pinyinController.updateActive(chinese, editorInfo)
+    }
+
+    /**
+     * Shift+Space switches between Chinese and the last other language. Returns false when no
+     * Chinese language is enabled, so Shift+Space keeps its normal meaning.
+     */
+    private fun toggleChineseLanguage(): Boolean {
+        val subtypes = SubtypeCycler.getAvailableSubtypes(this, PhysicalKeyboardInputMethodService::class.java)
+        val chinese = subtypes.filter { rocks.pkb.plektra.pinyin.PinyinController.isChineseLocale(it.localeString()) }
+        if (chinese.isEmpty()) return false
+        val others = subtypes - chinese.toSet()
+        val currentIsChinese = rocks.pkb.plektra.pinyin.PinyinController.isChineseLocale(currentSubtypeLocale())
+        val target = if (currentIsChinese) {
+            others.firstOrNull { it.localeString() == lastNonChineseSubtypeLocale } ?: others.firstOrNull()
+        } else {
+            chinese.first()
+        } ?: return false
+        if (pinyinController.isComposing) pinyinController.abandon(commitLetters = true)
+        return SubtypeCycler.switchToSubtype(
+            context = this,
+            imeServiceClass = PhysicalKeyboardInputMethodService::class.java,
+            assets = assets,
+            target = target,
+            showToast = SettingsManager.isToastOnLayoutSwitchEnabled(this)
+        )
+    }
+
+    /**
+     * Pinyin key handling, run after Plektra's modifier bookkeeping and language shortcuts.
+     * Returns true when the key was consumed.
+     */
+    private fun handlePinyinKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (!::pinyinController.isInitialized) return false
+        val alt = event?.isAltPressed == true || altPressed || altPhysicallyPressed || altLatchActive || altOneShot
+        val ctrl = event?.isCtrlPressed == true || ctrlPressed || ctrlPhysicallyPressed ||
+            ctrlLatchActive || ctrlOneShot || ctrlLatchFromNavMode
+        val shift = event?.isShiftPressed == true || shiftPressed ||
+            modifierStateController.shiftPhysicallyPressed || shiftOneShot || shiftLayerLatched || capsLockEnabled
+        val meta = event?.isMetaPressed == true
+
+        if (keyCode == KeyEvent.KEYCODE_SPACE && shift && !capsLockEnabled && !alt && !ctrl && !meta &&
+            event?.repeatCount == 0
+        ) {
+            if (toggleChineseLanguage()) {
+                modifierStateController.clearShiftState(resetPressedState = false)
+                shiftLayerLatched = false
+                updateStatusBarText()
+                return true
+            }
+            return false
+        }
+
+        if (!pinyinController.active) return false
+        val wasComposing = pinyinController.isComposing
+        val consumed = pinyinController.onKeyDown(
+            keyCode = keyCode,
+            event = event,
+            mods = rocks.pkb.plektra.pinyin.PinyinController.Modifiers(
+                alt = alt,
+                shift = shift,
+                ctrlOrMeta = ctrl || meta,
+                altText = if (alt) alternateCharacterManager.getAltModifierMappings()[keyCode] else null,
+                overlayActive = symLayoutController.isSymActive() || navModeController.isNavModeActive()
+            )
+        )
+        if (consumed) {
+            // An Alt or Shift tap applies to one key only; a latched Alt (number lock) stays.
+            var modifiersChanged = false
+            if (altOneShot && alt) {
+                altOneShot = false
+                modifiersChanged = true
+            }
+            if ((shiftOneShot && shift) || (wasComposing && shiftOneShot)) {
+                modifierStateController.consumeShiftOneShot()
+                modifiersChanged = true
+            }
+            if (modifiersChanged) updateStatusBarText()
+        }
+        return consumed
     }
     /**
      * Aggiorna la status bar delegando al controller dedicato.
@@ -3683,6 +3828,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         // Reset clipboard overlay when starting new input
 
         updateInputContextState(info)
+        if (::pinyinController.isInitialized) {
+            // A new field (or a restart) starts without a composition; the editor already dropped it.
+            pinyinController.onFinishInput()
+            updatePinyinActive(editorInfo = info)
+        }
         beginCursorAnchorMonitoring()
         uiHandler.post { refreshSmoothCaretExperiment() }
         val state = inputContextState
@@ -3838,6 +3988,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         pendingKeyboardSurfaceTransition?.let(uiHandler::removeCallbacks)
         pendingKeyboardSurfaceTransition = null
         super.onFinishInput()
+        if (::pinyinController.isInitialized) pinyinController.onFinishInput()
         caretBadgeController.onEditorGone()
         if (::textExpansionController.isInitialized) textExpansionController.clear()
         keyboardVisibilityController.cancelPendingSurfaceTransition()
@@ -4335,7 +4486,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
      */
     override fun onCurrentInputMethodSubtypeChanged(newSubtype: android.view.inputmethod.InputMethodSubtype) {
         super.onCurrentInputMethodSubtypeChanged(newSubtype)
-        
+        updatePinyinActive(newSubtype.localeString())
+
         if (::suggestionController.isInitialized) {
             val newLocale = getLocaleFromSubtype(newSubtype)
             suggestionController.updateLocale(newLocale)
@@ -4422,6 +4574,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     ) {
         val perfStart = ImePerfLogger.mark()
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+        if (::pinyinController.isInitialized &&
+            pinyinController.onSelectionUpdate(newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+        ) {
+            return
+        }
         liveSpeechEditor?.let { editor ->
             val expected = if (candidatesEnd >= 0) candidatesEnd else editor.expectedCursor
             if ((oldSelStart != newSelStart || oldSelEnd != newSelEnd) &&
@@ -4854,6 +5011,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             altPressed || altPhysicallyPressed || altLatchActive || altOneShot ||
             shiftPressed || modifierStateController.shiftPhysicallyPressed || shiftLayerLatched || shiftOneShot
         if (hasEditableField && !expansionShortcutModifierActive &&
+            !(::pinyinController.isInitialized && pinyinController.isComposing) &&
             ::textExpansionController.isInitialized &&
             textExpansionController.handleKeyDown(keyCode)
         ) {
@@ -4953,6 +5111,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
                 shiftPressed = event.isShiftPressed || shiftOneShot || capsLockEnabled
             )
             if (!symChar.isNullOrEmpty()) {
+                // Finish a pinyin composition first, or the symbol would replace it.
+                if (::pinyinController.isInitialized && pinyinController.isComposing) {
+                    pinyinController.commitHighlighted()
+                }
                 val inputConnection = currentInputConnection
                 val committed = handleBoundaryTextBeforeCommit(symChar, inputConnection) ||
                     inputConnection?.commitText(symChar, 1) == true
@@ -4964,6 +5126,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
 
         // If any SYM page or clipboard overlay is open, close on BACK and consume
         if (keyCode == KeyEvent.KEYCODE_BACK) {
+            if (::pinyinController.isInitialized && pinyinController.isComposing && event?.repeatCount == 0) {
+                pinyinController.cancel()
+                return true
+            }
             if (candidatesBarController.handleBackPressed()) {
                 return true
             }
@@ -5215,6 +5381,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             if (shouldUpdateStatusBar) {
                 updateStatusBarText()
             }
+            return true
+        }
+
+        if (hasEditableField && !isModifierKey && handlePinyinKeyDown(keyCode, event)) {
             return true
         }
 
