@@ -3434,6 +3434,15 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
      */
     private fun handlePinyinKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         if (!::pinyinController.isInitialized) return false
+        if (pinyinController.active) {
+            Log.d(
+                TAG,
+                "Pinyin key ${KeyEvent.keyCodeToString(keyCode)} meta=0x${Integer.toHexString(event?.metaState ?: 0)} " +
+                    "dev=${event?.deviceId} altPressed=$altPressed altPhys=$altPhysicallyPressed altLatch=$altLatchActive " +
+                    "altOneShot=$altOneShot altLayer=$altModifierLayerLatched shiftPressed=$shiftPressed " +
+                    "shiftPhys=${modifierStateController.shiftPhysicallyPressed} shiftOneShot=$shiftOneShot shiftLayer=$shiftLayerLatched"
+            )
+        }
         val alt = event?.isAltPressed == true || altPressed || altPhysicallyPressed || altLatchActive || altOneShot
         val ctrl = event?.isCtrlPressed == true || ctrlPressed || ctrlPhysicallyPressed ||
             ctrlLatchActive || ctrlOneShot || ctrlLatchFromNavMode
@@ -4917,6 +4926,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             }
         }
         val remapped = remapHardwareEvent(keyCode_, event_)
+        if (::pinyinController.isInitialized && pinyinController.active) {
+            Log.d(
+                TAG,
+                "Pinyin raw down ${KeyEvent.keyCodeToString(keyCode_)} -> ${KeyEvent.keyCodeToString(remapped.keyCode)} " +
+                    "meta 0x${Integer.toHexString(event_?.metaState ?: 0)} -> 0x${Integer.toHexString(remapped.event?.metaState ?: 0)} " +
+                    "repeat=${event_?.repeatCount} scan=${event_?.scanCode}"
+            )
+        }
         if (remapped.consume) {
             remapped.directAction?.let { ClicksButtonDirectActionExecutor.execute(this, it) }
             return true
