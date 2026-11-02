@@ -3449,7 +3449,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
                 shift = shift,
                 ctrlOrMeta = ctrl || meta,
                 altText = if (alt) alternateCharacterManager.getAltModifierMappings()[keyCode] else null,
-                overlayActive = symLayoutController.isSymActive() || navModeController.isNavModeActive()
+                overlayActive = symLayoutController.isSymActive() || navModeController.isNavModeActive(),
+                altLocked = altLatchActive
             )
         )
         if (consumed) {

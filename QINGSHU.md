@@ -1,7 +1,7 @@
 # 青书 Qingshu
 
 Qingshu 是 [Plektra](https://github.com/pkb-rocks/plektra)（Pastiera 的后续项目）的分支，为 Unihertz Titan 2 实体键盘加入中文拼音输入。
-拼音引擎来自 [青简 Qingjian](https://github.com/qingjian-team/qingjian)，直接使用其官方 Android 版的预编译引擎与词库。
+拼音引擎来自 [青简 Qingjian](https://github.com/qingjian-team/qingjian)：词库与语言模型取自其官方 Android 版，引擎从其源码编译并加上离线联想（见 `third_party/qingjian/`）。
 
 两个项目都是 GPL-3.0（青简为 GPL-3.0-or-later），本分支也以 GPL-3.0 发布。Qingshu 不是 Plektra 或青简的官方版本。
 
@@ -44,7 +44,9 @@ ANDROID_NDK_HOME=/path/to/ndk scripts/build-qingjian-engine.sh arm64-v8a
 
 点键盘栏上的候选也能直接选。
 
-**联想**：上屏后键盘栏显示常接在后面的词，Alt+W…V（1–9）或点选上屏，选完会继续联想；打字母、空格或其他键时联想自动消失，空格照常打空格。双击 Alt 锁定数字时，组字中按这些键同样是选字。
+**联想**：上屏后键盘栏显示常接在后面的词，Alt+W…V（1–9）或点选上屏，选完会继续联想；打字母、空格或其他键时联想自动消失，空格照常打空格。
+
+双击 Alt 锁定数字时，组字中按这些键同样是选字；未组字时（包括显示联想时）照常输入数字。
 
 装了 Shizuku 并开启 Plektra 的触控板手势时：在实体键盘表面左右滑可移动高亮，往上滑上屏高亮候选。
 

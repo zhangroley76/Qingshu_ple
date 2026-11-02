@@ -58,6 +58,8 @@ class PinyinController(
         val altText: String?,
         /** A SYM page or similar overlay owns the keyboard. */
         val overlayActive: Boolean,
+        /** Alt is locked (double-tapped number lock): the user is typing digits. */
+        val altLocked: Boolean = false,
     )
 
     /** Updates [active] for the current language and field; returns the new value. */
@@ -137,7 +139,8 @@ class PinyinController(
 
         // Not composing. Alt+1–9 picks a shown association; any other key dismisses them.
         if (associations.isNotEmpty()) {
-            val digit = if (mods.alt) mods.altText?.singleOrNull() else null
+            // With Alt locked for numbers, digits stay digits.
+            val digit = if (mods.alt && !mods.altLocked) mods.altText?.singleOrNull() else null
             if (digit != null && digit in '1'..'9') {
                 associations.getOrNull(digit - '1')?.let { pickAssociation(it) }
                 return true
