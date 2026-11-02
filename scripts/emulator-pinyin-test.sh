@@ -81,12 +81,12 @@ key KEYCODE_BACK
 key KEYCODE_SPACE
 check "Space after Back" " "
 
-log "shijie, Alt+Q turns to the next page, Alt+W picks its first candidate"
+log "shijie, Alt+P turns to the next page, Alt+W picks its first candidate"
 type_text shijie
-combo KEYCODE_ALT_LEFT KEYCODE_Q
+combo KEYCODE_ALT_LEFT KEYCODE_P
 adb exec-out screencap -p > "$OUT/page2.png"
 combo KEYCODE_ALT_LEFT KEYCODE_W
-check_absent "Alt+Q paging (not the first candidate 世界)" "世界"
+check_absent "Alt+P paging (not the first candidate 世界)" "世界"
 
 log "woxiangquchifan, Alt+S picks the 4th (我想去), then Space"
 type_text woxiangquchifan

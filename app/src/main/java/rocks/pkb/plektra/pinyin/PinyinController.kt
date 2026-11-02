@@ -113,6 +113,11 @@ class PinyinController(
         val letter = letterFor(keyCode)
         if (composing) {
             when {
+                // Alt+P turns to the next page (back to the first after the last).
+                mods.alt && keyCode == KeyEvent.KEYCODE_P -> {
+                    pageWrapping()
+                    return true
+                }
                 mods.alt -> return handleAltWhileComposing(mods.altText)
                 letter != null -> return apply(engine.push(letter))
                 keyCode == KeyEvent.KEYCODE_SPACE -> return selectAbsolute(highlighted)
@@ -191,11 +196,7 @@ class PinyinController(
                 if (index < frame.candidates.size) selectAbsolute(index)
                 return true
             }
-            // The 0 key (Alt+Q on the Titan 2) turns to the next page, back to the first after the last.
-            c == '0' -> {
-                pageWrapping()
-                return true
-            }
+            c == '0' -> return true
             c == '\'' -> return apply(engine.push('\''))
             isAsciiPunctuation(c) -> {
                 commitHighlighted()
