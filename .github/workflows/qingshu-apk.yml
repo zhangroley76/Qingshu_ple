@@ -1,0 +1,79 @@
+name: Qingshu APK
+
+# Builds a debug APK of the pinyin branch and publishes it as the "qingshu-latest" pre-release,
+# so it can be downloaded straight to the phone. If the build fails, the compiler errors are put
+# in the body of the "qingshu-build-failed" pre-release instead.
+
+on:
+  push:
+    branches: [pinyin]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: qingshu-apk
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Fetch Qingjian engine and dictionary
+        run: scripts/fetch-qingjian-engine.sh
+
+      - name: Use the shared debug key (so updates install over each other)
+        run: |
+          mkdir -p ~/.android
+          cp .github/qingshu-debug-keystore.p12 ~/.android/debug.keystore
+
+      - name: Build
+        id: build
+        run: |
+          chmod +x ./gradlew
+          set -o pipefail
+          ./gradlew assembleStableDebug --stacktrace 2>&1 | tee build.log
+
+      - name: Publish APK
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          apk=$(ls app/build/outputs/apk/stable/debug/*.apk | head -1)
+          cp "$apk" qingshu-debug.apk
+          gh release delete qingshu-build-failed --yes --cleanup-tag 2>/dev/null || true
+          gh release delete qingshu-latest --yes --cleanup-tag 2>/dev/null || true
+          gh release create qingshu-latest qingshu-debug.apk \
+            --prerelease --target "$GITHUB_SHA" \
+            --title "Qingshu debug build ${GITHUB_SHA::7}" \
+            --notes "Debug APK built from ${GITHUB_SHA} on $(date -u +%Y-%m-%dT%H:%MZ)."
+
+      - name: Report build errors
+        if: failure() && steps.build.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "Build of ${GITHUB_SHA} failed."
+            echo
+            echo '```'
+            grep -E '^e: |error:|FAILURE|What went wrong' -A3 build.log | head -c 60000 || true
+            echo
+            echo '--- tail ---'
+            tail -n 80 build.log | head -c 20000
+            echo '```'
+          } > notes.md
+          gh release delete qingshu-build-failed --yes --cleanup-tag 2>/dev/null || true
+          gh release create qingshu-build-failed --prerelease --target "$GITHUB_SHA" \
+            --title "Qingshu build failed ${GITHUB_SHA::7}" --notes-file notes.md
