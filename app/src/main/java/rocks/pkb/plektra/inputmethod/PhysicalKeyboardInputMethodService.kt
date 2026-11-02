@@ -1867,6 +1867,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         NotificationHelper.cancelNavModeNotification(this)
 
         modifierStateController = ModifierStateController(DOUBLE_TAP_THRESHOLD)
+        modifierStateController.autoCapBlocked = {
+            ::pinyinController.isInitialized && pinyinController.active
+        }
         updateModifierTapLatchSettings()
         navModeController = NavModeController(this, modifierStateController)
         navModeController.setOnNavModeChangedListener { isActive ->
@@ -3365,7 +3368,14 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             symLayoutController.chineseSymbolsOverride =
                 if (chinese) rocks.pkb.plektra.pinyin.ChineseSymbols.MAPPINGS else null
         }
+        val wasActive = pinyinController.active
         pinyinController.updateActive(chinese, editorInfo)
+        if (pinyinController.active && !wasActive && ::modifierStateController.isInitialized &&
+            modifierStateController.consumeShiftOneShot()
+        ) {
+            // Drop an automatic capital set while English was active.
+            updateStatusBarText()
+        }
         Log.d(TAG, "Pinyin: subtype=$subtypeLocale chineseMode=${chineseModeEnabled()} active=${pinyinController.active}")
     }
 

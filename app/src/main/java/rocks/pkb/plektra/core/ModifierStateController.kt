@@ -359,7 +359,11 @@ class ModifierStateController(
         }
     }
 
+    /** Qingshu: true while Chinese is active, where an automatic capital would break pinyin. */
+    var autoCapBlocked: () -> Boolean = { false }
+
     fun requestShiftOneShotFromAutoCap(): Boolean {
+        if (autoCapBlocked()) return false
         return shiftStateMachine.requestOneShot()
     }
 
