@@ -43,7 +43,8 @@ jobs:
         run: |
           chmod +x ./gradlew
           set -o pipefail
-          ./gradlew assembleStableDebug --stacktrace 2>&1 | tee build.log
+          # The version name carries the commit, so Settings > About shows which build is installed.
+          ./gradlew assembleStableDebug --stacktrace -PPLEKTRA_VERSION_NAME="26.09-qs.${GITHUB_SHA::7}" 2>&1 | tee build.log
 
       - name: Publish APK
         if: success()
