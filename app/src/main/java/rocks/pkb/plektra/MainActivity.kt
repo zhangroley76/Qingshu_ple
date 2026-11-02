@@ -484,7 +484,7 @@ fun KeyboardSetupScreen(
             events = recordedEvents,
             includeSuggestions = includeSuggestionsInExport,
             includeRawTrackpad = includeRawTrackpadInExport
-        )
+        ) + "\n\n===== Qingshu app log (logcat) =====\n" + rocks.pkb.plektra.pinyin.QingshuLog.dump()
     }
     val copyReportToClipboard: (String) -> Unit = { report ->
         val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager

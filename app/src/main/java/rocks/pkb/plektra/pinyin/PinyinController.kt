@@ -57,6 +57,7 @@ class PinyinController(
     /** Updates [active] for the current language and field; returns the new value. */
     fun updateActive(chineseSubtype: Boolean, editorInfo: EditorInfo?): Boolean {
         val wanted = chineseSubtype && acceptsPinyin(editorInfo)
+        Log.d(TAG, "updateActive chinese=$chineseSubtype inputType=0x${Integer.toHexString(editorInfo?.inputType ?: 0)} -> $wanted")
         if (!wanted && active) abandon(commitLetters = true)
         active = wanted
         if (chineseSubtype) engine.ensureLoaded()
@@ -68,6 +69,16 @@ class PinyinController(
      * handle it (after the composition was committed if the key would otherwise disturb it).
      */
     fun onKeyDown(keyCode: Int, event: KeyEvent?, mods: Modifiers): Boolean {
+        val consumed = handleKey(keyCode, event, mods)
+        Log.d(
+            TAG,
+            "key=${KeyEvent.keyCodeToString(keyCode)} mods=$mods active=$active engine=${engine.state} " +
+                "consumed=$consumed preedit='${frame.preedit}' candidates=${frame.candidates.take(5)}"
+        )
+        return consumed
+    }
+
+    private fun handleKey(keyCode: Int, event: KeyEvent?, mods: Modifiers): Boolean {
         if (!active) return false
         // Volume, media, call and similar keys never touch the composition.
         if (event?.isSystem == true) return false

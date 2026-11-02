@@ -26,6 +26,12 @@
             android:exported="true"
             android:permission="android.permission.DUMP"
             android:targetActivity=".NotesActivity" />
+        <!-- Qingshu: host for scripts/emulator-pinyin-test.sh -->
+        <activity
+            android:name=".QingshuTestActivity"
+            android:exported="true"
+            android:label="Qingshu test"
+            android:theme="@style/Theme.Plektra" />
         <activity-alias
             android:name=".TutorialPreviewActivity"
             android:exported="true"

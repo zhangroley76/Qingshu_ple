@@ -59,6 +59,14 @@ jobs:
             --title "Qingshu debug build ${GITHUB_SHA::7}" \
             --notes "Debug APK built from ${GITHUB_SHA} on $(date -u +%Y-%m-%dT%H:%MZ)."
 
+      - name: Keep the APK for the emulator test
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qingshu-debug-apk
+          path: qingshu-debug.apk
+          retention-days: 3
+
       - name: Report build errors
         if: failure() && steps.build.outcome == 'failure'
         env:
@@ -77,3 +85,48 @@ jobs:
           gh release delete qingshu-build-failed --yes --cleanup-tag 2>/dev/null || true
           gh release create qingshu-build-failed --prerelease --target "$GITHUB_SHA" \
             --title "Qingshu build failed ${GITHUB_SHA::7}" --notes-file notes.md
+
+  # Types pinyin on an emulator with injected key events (scripts/emulator-pinyin-test.sh) and
+  # publishes the result as the "qingshu-emulator-test" pre-release: pass/fail lines and logs in
+  # the description, screenshots and the full logcat as files.
+  emulator-test:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: qingshu-debug-apk
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run pinyin test on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: mkdir -p test-out && bash scripts/emulator-pinyin-test.sh qingshu-debug.apk test-out/report.md
+
+      - name: Publish test report
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p test-out
+          [ -f test-out/report.md ] || echo "Emulator test produced no report (see the workflow log)." > test-out/report.md
+          head -c 120000 test-out/report.md > notes.md
+          gh release delete qingshu-emulator-test --yes --cleanup-tag 2>/dev/null || true
+          files=$(ls test-out/*.png test-out/logcat.txt 2>/dev/null || true)
+          gh release create qingshu-emulator-test $files --prerelease --target "$GITHUB_SHA" \
+            --title "Qingshu emulator test ${GITHUB_SHA::7}" --notes-file notes.md
