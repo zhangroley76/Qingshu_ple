@@ -2036,8 +2036,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
                 navModeController.cancelNotification()
                 navModeController.refreshNavModeState()
                 updateStatusBarText()
+                cycleLanguage(backwards)
+            } else {
+                // Qingshu: the language button switches between Chinese and the current language;
+                // Ctrl+button, Ctrl+Space and Alt+Enter still cycle the other languages.
+                toggleChineseLanguage()
             }
-            cycleLanguage(backwards)
         }
 
         // Register listener for variation selection (both controllers)
@@ -3350,42 +3354,66 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         editorInfo: EditorInfo? = currentInputEditorInfo
     ) {
         if (!::pinyinController.isInitialized) return
-        val chinese = rocks.pkb.plektra.pinyin.PinyinController.isChineseLocale(subtypeLocale)
-        if (!chinese && !subtypeLocale.isNullOrBlank()) lastNonChineseSubtypeLocale = subtypeLocale
+        val subtypeChinese = rocks.pkb.plektra.pinyin.PinyinController.isChineseLocale(subtypeLocale)
+        if (!subtypeChinese && !subtypeLocale.isNullOrBlank()) lastNonChineseSubtypeLocale = subtypeLocale
+        // Chinese is on either because the Chinese language is selected in Android, or because the
+        // user switched to it with Shift+Space / the language button (Qingshu's own mode, which
+        // doesn't depend on Android enabling the language).
+        val chinese = subtypeChinese || chineseModeEnabled()
+        rocks.pkb.plektra.pinyin.QingshuMode.chineseActive = chinese
         if (::symLayoutController.isInitialized) {
             symLayoutController.chineseSymbolsOverride =
                 if (chinese) rocks.pkb.plektra.pinyin.ChineseSymbols.MAPPINGS else null
         }
         pinyinController.updateActive(chinese, editorInfo)
+        Log.d(TAG, "Pinyin: subtype=$subtypeLocale chineseMode=${chineseModeEnabled()} active=${pinyinController.active}")
     }
 
-    /**
-     * Shift+Space switches between Chinese and the last other language. Returns false when no
-     * Chinese language is enabled, so Shift+Space keeps its normal meaning.
-     */
+    private fun chineseModeEnabled(): Boolean =
+        SettingsManager.getPreferences(this).getBoolean(rocks.pkb.plektra.pinyin.QingshuMode.PREF_CHINESE_MODE, false)
+
+    private fun isShiftSpaceChord(event: KeyEvent?): Boolean {
+        val shift = event?.isShiftPressed == true || shiftPressed ||
+            modifierStateController.shiftPhysicallyPressed || shiftOneShot || shiftLayerLatched
+        val alt = event?.isAltPressed == true || altPressed || altPhysicallyPressed || altLatchActive || altOneShot
+        val ctrl = event?.isCtrlPressed == true || ctrlPressed || ctrlPhysicallyPressed ||
+            ctrlLatchActive || ctrlOneShot || ctrlLatchFromNavMode
+        if (event == null || event.repeatCount != 0) return false
+        Log.d(TAG, "Pinyin: Space shift=$shift (event=${event.isShiftPressed} pressed=$shiftPressed " +
+            "physical=${modifierStateController.shiftPhysicallyPressed} oneShot=$shiftOneShot latched=$shiftLayerLatched " +
+            "caps=$capsLockEnabled) alt=$alt ctrl=$ctrl")
+        return shift && !capsLockEnabled && !alt && !ctrl && !event.isMetaPressed
+    }
+
+    /** Switches between Chinese and the current other language. Always succeeds and says so. */
     private fun toggleChineseLanguage(): Boolean {
-        val subtypes = SubtypeCycler.getAvailableSubtypes(this, PhysicalKeyboardInputMethodService::class.java)
-        val chinese = subtypes.filter { rocks.pkb.plektra.pinyin.PinyinController.isChineseLocale(it.localeString()) }
-        if (chinese.isEmpty()) {
-            Log.w(TAG, "Shift+Space: no enabled Chinese subtype among ${subtypes.map { it.localeString() }}")
-            android.widget.Toast.makeText(this, "中文 (拼音) 未启用", android.widget.Toast.LENGTH_SHORT).show()
-            return false
+        if (::pinyinController.isInitialized && pinyinController.isComposing) {
+            pinyinController.abandon(commitLetters = true)
         }
-        val others = subtypes - chinese.toSet()
-        val currentIsChinese = rocks.pkb.plektra.pinyin.PinyinController.isChineseLocale(currentSubtypeLocale())
-        val target = if (currentIsChinese) {
-            others.firstOrNull { it.localeString() == lastNonChineseSubtypeLocale } ?: others.firstOrNull()
-        } else {
-            chinese.first()
-        } ?: return false
-        if (pinyinController.isComposing) pinyinController.abandon(commitLetters = true)
-        return SubtypeCycler.switchToSubtype(
-            context = this,
-            imeServiceClass = PhysicalKeyboardInputMethodService::class.java,
-            assets = assets,
-            target = target,
-            showToast = SettingsManager.isToastOnLayoutSwitchEnabled(this)
-        )
+        val turnOn = !rocks.pkb.plektra.pinyin.QingshuMode.chineseActive
+        SettingsManager.getPreferences(this).edit()
+            .putBoolean(rocks.pkb.plektra.pinyin.QingshuMode.PREF_CHINESE_MODE, turnOn)
+            .apply()
+        if (!turnOn && rocks.pkb.plektra.pinyin.PinyinController.isChineseLocale(currentSubtypeLocale())) {
+            // Chinese was selected as an Android language: move to another one.
+            val target = SubtypeCycler.getAvailableSubtypes(this, PhysicalKeyboardInputMethodService::class.java)
+                .filterNot { rocks.pkb.plektra.pinyin.PinyinController.isChineseLocale(it.localeString()) }
+                .let { others -> others.firstOrNull { it.localeString() == lastNonChineseSubtypeLocale } ?: others.firstOrNull() }
+            if (target != null) {
+                SubtypeCycler.switchToSubtype(
+                    context = this,
+                    imeServiceClass = PhysicalKeyboardInputMethodService::class.java,
+                    assets = assets,
+                    target = target,
+                    showToast = false
+                )
+            }
+        }
+        updatePinyinActive()
+        Log.i(TAG, "Pinyin: toggled Chinese ${if (turnOn) "on" else "off"}")
+        android.widget.Toast.makeText(this, if (turnOn) "中文" else "English", android.widget.Toast.LENGTH_SHORT).show()
+        updateStatusBarText()
+        return true
     }
 
     /**
@@ -3400,18 +3428,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         val shift = event?.isShiftPressed == true || shiftPressed ||
             modifierStateController.shiftPhysicallyPressed || shiftOneShot || shiftLayerLatched || capsLockEnabled
         val meta = event?.isMetaPressed == true
-
-        if (keyCode == KeyEvent.KEYCODE_SPACE && shift && !capsLockEnabled && !alt && !ctrl && !meta &&
-            event?.repeatCount == 0
-        ) {
-            if (toggleChineseLanguage()) {
-                modifierStateController.clearShiftState(resetPressedState = false)
-                shiftLayerLatched = false
-                updateStatusBarText()
-                return true
-            }
-            return false
-        }
 
         if (!pinyinController.active) return false
         val wasComposing = pinyinController.isComposing
@@ -4911,6 +4927,17 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         val hasEditableField = initialInputConnection != null && inputType != EditorInfo.TYPE_NULL
         if (event_?.repeatCount == 0) consumedLanguageSwitchKeys.remove(keyCode_)
         else if (keyCode_ in consumedLanguageSwitchKeys) return true
+        // Qingshu: Shift+Space toggles Chinese. Checked this early so no other feature takes the chord.
+        if (hasEditableField && keyCode == KeyEvent.KEYCODE_SPACE && isShiftSpaceChord(event)) {
+            Log.i(TAG, "Pinyin: Shift+Space")
+            consumedLanguageSwitchKeys.add(keyCode_)
+            modifierStateController.registerNonModifierKey()
+            otherKeyInteractedDuringHold = true
+            shiftLayerLatched = false
+            modifierStateController.clearShiftState(resetPressedState = false)
+            toggleChineseLanguage()
+            return true
+        }
         val languageCtrl = event?.isCtrlPressed == true || ctrlPressed || ctrlPhysicallyPressed ||
             ctrlLatchActive || ctrlOneShot || ctrlLatchFromNavMode
         val languageAlt = event?.isAltPressed == true || altPressed || altPhysicallyPressed || altLatchActive || altOneShot
