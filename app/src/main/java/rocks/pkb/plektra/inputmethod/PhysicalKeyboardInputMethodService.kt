@@ -4996,8 +4996,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         if (remapped.consume) return true
         val keyCode = remapped.keyCode
         val event = remapped.event
-        if (qingshuModifierReleaseAfterPinyin(keyCode, event)) return true
-        if (qsFnArrowKeys.remove(keyCode)) return true
         // Handle long press even when the keyboard is hidden but we still have a valid InputConnection.
         val inputConnection = currentInputConnection
         if (inputConnection == null) {
@@ -5839,6 +5837,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         if (remapped.consume) return true
         val keyCode = remapped.keyCode
         val event = remapped.event
+        if (qingshuModifierReleaseAfterPinyin(keyCode, event)) return true
+        if (qsFnArrowKeys.remove(keyCode)) return true
         if (keyCode == KeyEvent.KEYCODE_ENTER && consumeAltEnterUntilKeyUp) {
             consumeAltEnterUntilKeyUp = false
             return true
