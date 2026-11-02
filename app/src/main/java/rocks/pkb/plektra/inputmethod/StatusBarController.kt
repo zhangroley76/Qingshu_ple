@@ -3142,7 +3142,7 @@ class StatusBarController(
         val suggestionsEnabledSetting = barPresentation.suggestions
         val sharedDynamicVariations = !SettingsManager.isStaticVariationBarModeEnabled(context) &&
             !snapshot.shouldDisableVariations && snapshot.variations.isNotEmpty()
-        val sharedVariations = if (sharedRow && barPresentation.actions && !expansionActive) {
+        val sharedVariations = if (sharedRow && barPresentation.actions && !expansionActive && !pinyinActive) {
             if (sharedDynamicVariations) snapshot.variations
             else if (!suggestionsAvailable) variationBarView?.resolveStaticVariations(snapshot).orEmpty()
             else emptyList()

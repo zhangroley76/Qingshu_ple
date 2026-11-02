@@ -34,6 +34,12 @@ class QingshuTestActivity : Activity() {
                 }
             })
         }
+        // The test presses Back to dismiss associations; never let it close this screen.
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT
+            ) { Log.i(TAG, "back ignored") }
+        }
         setContentView(field)
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
         field.requestFocus()

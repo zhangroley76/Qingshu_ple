@@ -24,6 +24,11 @@ check() { # name, expected substring of the field text
   if [[ "$got" == *"$2"* ]]; then checks+=("PASS | $1 | $got"); else checks+=("FAIL | $1 | expected *$2* got $got"); fi
 }
 
+check_absent() { # name, substring that must not appear
+  local got; got="$(field_text)"
+  if [[ "$got" != *"$2"* ]]; then checks+=("PASS | $1 | $got"); else checks+=("FAIL | $1 | unexpected *$2* in $got"); fi
+}
+
 log "install"
 adb install -r -g "$APK" || exit 1
 adb shell settings put secure show_ime_with_hard_keyboard 1
@@ -66,6 +71,22 @@ log "association: Alt+W picks the first next word after 你好"
 adb exec-out screencap -p > "$OUT/association.png"
 combo KEYCODE_ALT_LEFT KEYCODE_W
 check "association Alt+W" "你好的"
+
+log "association: Space picks the next one instead of typing a space"
+key KEYCODE_SPACE
+check_absent "Space picks association" "的 "
+
+log "Back dismisses associations, then Space types a space"
+key KEYCODE_BACK
+key KEYCODE_SPACE
+check "Space after Back" " "
+
+log "shijie, Alt+Q turns to the next page, Alt+W picks its first candidate"
+type_text shijie
+combo KEYCODE_ALT_LEFT KEYCODE_Q
+adb exec-out screencap -p > "$OUT/page2.png"
+combo KEYCODE_ALT_LEFT KEYCODE_W
+check_absent "Alt+Q paging (not the first candidate 世界)" "世界"
 
 log "woxiangquchifan, Alt+S picks the 4th (我想去), then Space"
 type_text woxiangquchifan

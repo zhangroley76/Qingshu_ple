@@ -39,6 +39,7 @@ class PinyinController(
 
     /** Next-word suggestions shown after a commit, while not composing (offline association). */
     private var associations: List<String> = emptyList()
+    private var associationHighlight = 0
 
     /** Lets the user switch association off (Qingshu setting); on by default. */
     var associationEnabled: Boolean = true
@@ -137,13 +138,24 @@ class PinyinController(
             return false
         }
 
-        // Not composing. Alt+1–9 picks a shown association; any other key dismisses them.
+        // Not composing. Space or Alt+1–9 picks a shown association; Back and other keys
+        // dismiss them (Back then types nothing, so the next Space is a real space).
         if (associations.isNotEmpty()) {
             // With Alt locked for numbers, digits stay digits.
             val digit = if (mods.alt && !mods.altLocked) mods.altText?.singleOrNull() else null
-            if (digit != null && digit in '1'..'9') {
-                associations.getOrNull(digit - '1')?.let { pickAssociation(it) }
-                return true
+            when {
+                digit != null && digit in '1'..'9' -> {
+                    associations.getOrNull(digit - '1')?.let { pickAssociation(it) }
+                    return true
+                }
+                keyCode == KeyEvent.KEYCODE_SPACE && !mods.alt && !mods.shift -> {
+                    associations.getOrNull(associationHighlight)?.let { pickAssociation(it) }
+                    return true
+                }
+                keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                    step(keyCode == KeyEvent.KEYCODE_DPAD_RIGHT)
+                    return true
+                }
             }
             clearAssociations()
         }
@@ -179,7 +191,11 @@ class PinyinController(
                 if (index < frame.candidates.size) selectAbsolute(index)
                 return true
             }
-            c == '0' -> return true
+            // The 0 key (Alt+Q on the Titan 2) turns to the next page, back to the first after the last.
+            c == '0' -> {
+                pageWrapping()
+                return true
+            }
             c == '\'' -> return apply(engine.push('\''))
             isAsciiPunctuation(c) -> {
                 commitHighlighted()
@@ -218,9 +234,15 @@ class PinyinController(
         showAssociations()
     }
 
+    val hasAssociations: Boolean get() = active && !frame.isComposing && associations.isNotEmpty()
+
+    /** Hides the associations (Back), so the next Space types a space. */
+    fun dismissAssociations() = clearAssociations()
+
     private fun clearAssociations() {
         if (associations.isEmpty()) return
         associations = emptyList()
+        associationHighlight = 0
         publishBar()
     }
 
@@ -236,6 +258,7 @@ class PinyinController(
         } else {
             emptyList()
         }
+        associationHighlight = 0
         publishBar()
     }
 
@@ -251,6 +274,13 @@ class PinyinController(
 
     /** Moves the highlight one candidate left or right; returns whether it moved. */
     fun step(right: Boolean): Boolean {
+        if (!frame.isComposing && associations.isNotEmpty()) {
+            val target = (associationHighlight + if (right) 1 else -1).coerceIn(0, associations.lastIndex)
+            if (target == associationHighlight) return false
+            associationHighlight = target
+            publishBar()
+            return true
+        }
         if (!frame.isComposing || frame.candidates.isEmpty()) return false
         val target = (highlighted + if (right) 1 else -1).coerceIn(0, frame.candidates.lastIndex)
         if (target == highlighted) return false
@@ -268,6 +298,14 @@ class PinyinController(
     }
 
     private fun pageStart(): Int = (highlighted / PAGE_SIZE) * PAGE_SIZE
+
+    /** Next page, or the first one after the last. */
+    private fun pageWrapping() {
+        if (!frame.isComposing || frame.candidates.isEmpty()) return
+        val next = pageStart() + PAGE_SIZE
+        highlighted = if (next > frame.candidates.lastIndex) 0 else next
+        publishBar()
+    }
 
     // --- Interruptions --------------------------------------------------------------------------
 
@@ -389,9 +427,9 @@ class PinyinController(
             when {
                 active && frame.isComposing && frame.candidates.isNotEmpty() ->
                     PinyinBarState(frame.candidates, pageStart(), highlighted)
-                // Associations have no highlight: Space keeps typing a space.
+                // Associations: Space picks the highlighted one (Back dismisses them first).
                 active && !frame.isComposing && associations.isNotEmpty() ->
-                    PinyinBarState(associations, 0, -1)
+                    PinyinBarState(associations, 0, associationHighlight)
                 else -> null
             }
         )

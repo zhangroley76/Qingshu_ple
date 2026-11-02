@@ -3340,6 +3340,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         pinyinBarVisible = state != null
         candidatesBarController.setPinyinBarState(state)
         if (state == null && !wasVisible) return
+        // The candidates aren't part of the status snapshot, so force a redraw.
+        invalidateRenderedStatusSnapshot()
         // The bar may be configured to stay hidden; candidates must still be visible.
         if (state != null && !wasVisible) ensureImeSurfaceVisible()
         updateStatusBarText()
@@ -3480,7 +3482,11 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         val slimModeActive = candidatesBarController.isSlimModeActive()
         val effectiveSoftwareKeyboardMode = SettingsManager.resolveEffectiveSoftwareKeyboardMode(this)
         val variationStart = ImePerfLogger.mark()
-        val variationSnapshot = if (!rocks.pkb.plektra.KeyboardBarConfiguration.read(this).presentation(slimModeActive).actions) {
+        // Accent variations (ù ú û …) are meaningless for pinyin and would cover the candidates.
+        val pinyinOwnsBar = ::pinyinController.isInitialized && pinyinController.active
+        val variationSnapshot = if (pinyinOwnsBar ||
+            !rocks.pkb.plektra.KeyboardBarConfiguration.read(this).presentation(slimModeActive).actions
+        ) {
             VariationStateController.Snapshot(isActive = false, lastInsertedChar = null, variations = emptyList())
         } else {
             variationStateController.refreshFromCursor(
@@ -4703,6 +4709,9 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         val remapped = if (SettingsManager.getSwapShiftAlt(this)) {
             val (swappedCode, swappedEvent) =
                 rocks.pkb.plektra.pinyin.ShiftAltSwap.swap(profileRemapped.keyCode, profileRemapped.event)
+            if (swappedCode != profileRemapped.keyCode) {
+                Log.d(TAG, "Swap Shift/Alt: ${KeyEvent.keyCodeToString(profileRemapped.keyCode)} -> ${KeyEvent.keyCodeToString(swappedCode)}")
+            }
             profileRemapped.copy(keyCode = swappedCode, event = swappedEvent)
         } else {
             profileRemapped
@@ -5181,6 +5190,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         if (keyCode == KeyEvent.KEYCODE_BACK) {
             if (::pinyinController.isInitialized && pinyinController.isComposing && event?.repeatCount == 0) {
                 pinyinController.cancel()
+                return true
+            }
+            if (::pinyinController.isInitialized && pinyinController.hasAssociations && event?.repeatCount == 0) {
+                pinyinController.dismissAssociations()
                 return true
             }
             if (candidatesBarController.handleBackPressed()) {
