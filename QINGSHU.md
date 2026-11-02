@@ -44,7 +44,7 @@ ANDROID_NDK_HOME=/path/to/ndk scripts/build-qingjian-engine.sh arm64-v8a
 
 点键盘栏上的候选也能直接选。
 
-**方向键**：Plektra 原有，按住 Fn（Ctrl）再按 E S D F 是上 左 下 右（J K L 也是左 下 右）；Fn+A 全选，Fn+W/R 往左/右扩大选取。组字中按方向键会先把高亮候选上屏。
+**方向键**（Plektra 原有）：E S D F 是上 左 下 右（J K L 也是左 下 右），A 全选，W/R 往左/右扩大选取。用法：先点一下 Fn 再按键（单次），或连点两下 Fn 锁定导航模式。预设「按住 Fn」会把组合键交给 App（例如 Ctrl+A 全选、Ctrl+S 存档）；要按住 Fn 就当方向键，到设置 → Nav Mode 打开「Ctrl-hold navigation」。组字中按这些键会先把高亮候选上屏。
 
 用按住的 Alt 选字（中文模式）不会在放开时进入长按的符号层或锁定，可以按住连续选。
 

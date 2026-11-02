@@ -125,10 +125,11 @@ combo KEYCODE_SHIFT_LEFT KEYCODE_SPACE
 type_text abc
 check "English after toggle" "abc"
 
-log "Fn(Ctrl)+S (Plektra default) moves the cursor left"
-combo KEYCODE_CTRL_LEFT KEYCODE_S
+log "Fn tapped once, then S (Plektra nav mapping) moves the cursor left"
+key KEYCODE_CTRL_LEFT
+key KEYCODE_S
 type_text z
-check "Fn+S is the left arrow" "abzc"
+check "Fn tap + S is the left arrow" "abzc"
 adb exec-out screencap -p > "$OUT/final.png"
 
 adb logcat -d -v time > "$OUT/logcat.txt"
