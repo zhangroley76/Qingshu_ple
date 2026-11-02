@@ -3483,12 +3483,15 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         
         val modifierSnapshot = modifierStateController.snapshot()
         val state = inputContextState
-        val addWordCandidate = if (state.shouldDisableSuggestions || isSpeechRecognitionActive) null else suggestionController.pendingAddWord()
+        // English word suggestions and "add to dictionary" don't apply to Chinese text.
+        val pinyinActive = ::pinyinController.isInitialized && pinyinController.active
+        val addWordCandidate = if (state.shouldDisableSuggestions || isSpeechRecognitionActive || pinyinActive) null else suggestionController.pendingAddWord()
         val suggestionsEnabled = SettingsManager.isExperimentalSuggestionsEnabled(this) && rocks.pkb.plektra.KeyboardBarConfiguration.read(this)
             .presentation(SettingsManager.getSlimModeActive(this)).suggestions
         val suggestionsStart = ImePerfLogger.mark()
         val baseSuggestions = when {
             state.shouldDisableSuggestions -> emptyList()
+            pinyinActive && !isSpeechRecognitionActive -> emptyList()
             isSpeechRecognitionActive -> if (SpeechSettings.continuousPreview(this))
                 speechPreviewWords.takeIf { it.isNotEmpty() }?.let { listOf(it.joinToString(" ")) }.orEmpty()
                 else speechPreviewWords.takeLast(3)
