@@ -125,10 +125,10 @@ combo KEYCODE_SHIFT_LEFT KEYCODE_SPACE
 type_text abc
 check "English after toggle" "abc"
 
-log "Fn(Ctrl)+A moves the cursor left, then typing inserts there"
-combo KEYCODE_CTRL_LEFT KEYCODE_A
+log "Fn(Ctrl)+S (Plektra default) moves the cursor left"
+combo KEYCODE_CTRL_LEFT KEYCODE_S
 type_text z
-check "Fn+A is the left arrow" "abzc"
+check "Fn+S is the left arrow" "abzc"
 adb exec-out screencap -p > "$OUT/final.png"
 
 adb logcat -d -v time > "$OUT/logcat.txt"

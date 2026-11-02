@@ -167,9 +167,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     private var qsShiftHeld = false
     // A modifier hold that selected pinyin candidates must not turn into a layer or latch.
     private var qsModifierUsedForPinyin = false
-    // Fn (or Ctrl) held: W A S D move the cursor. Keys consumed this way, so their key-ups are too.
-    private var qsFnHeld = false
-    private val qsFnArrowKeys = mutableSetOf<Int>()
     private lateinit var textExpansionController: TextExpansionController
     private lateinit var emojiShortcodeSource: EmojiShortcodeSource
     private lateinit var symbolShortcodeSource: SymbolShortcodeSource
@@ -3451,49 +3448,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
                 if (down && repeat == 0 && !qsAltHeld && !qsShiftHeld) qsModifierUsedForPinyin = false
                 qsShiftHeld = down
             }
-            KeyEvent.KEYCODE_FUNCTION, KeyEvent.KEYCODE_CTRL_LEFT, KeyEvent.KEYCODE_CTRL_RIGHT -> qsFnHeld = down
         }
-    }
-
-    /**
-     * Qingshu: while Fn (Ctrl) is held, W A S D are the arrow keys, in every language.
-     * Shift+Fn+WASD extends the selection. While composing pinyin they move the highlight
-     * (A/D) and turn pages (W/S), like the real arrow keys.
-     */
-    private fun handleFnArrowKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        val fnHeld = event?.isFunctionPressed == true || event?.isCtrlPressed == true || ctrlPhysicallyPressed
-        if (!fnHeld) return false
-        val arrow = when (keyCode) {
-            KeyEvent.KEYCODE_W -> KeyEvent.KEYCODE_DPAD_UP
-            KeyEvent.KEYCODE_A -> KeyEvent.KEYCODE_DPAD_LEFT
-            KeyEvent.KEYCODE_S -> KeyEvent.KEYCODE_DPAD_DOWN
-            KeyEvent.KEYCODE_D -> KeyEvent.KEYCODE_DPAD_RIGHT
-            else -> return false
-        }
-        qsFnArrowKeys.add(keyCode)
-        otherKeyInteractedDuringHold = true
-        modifierStateController.registerNonModifierKey()
-        if (::pinyinController.isInitialized && pinyinController.active && pinyinController.isComposing) {
-            pinyinController.onKeyDown(
-                arrow, null,
-                rocks.pkb.plektra.pinyin.PinyinController.Modifiers(
-                    alt = false, shift = false, ctrlOrMeta = false, altText = null, overlayActive = false
-                )
-            )
-            return true
-        }
-        val ic = currentInputConnection ?: return false
-        val shift = event?.isShiftPressed == true
-        val meta = if (shift) KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON else 0
-        val now = android.os.SystemClock.uptimeMillis()
-        ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, arrow, 0, meta))
-        ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, arrow, 0, meta))
-        // Ctrl tapped then used as a chord should not stay armed as a one-shot.
-        if (ctrlOneShot && !ctrlLatchActive) {
-            ctrlOneShot = false
-            updateStatusBarText()
-        }
-        return true
     }
 
     /**
@@ -3504,10 +3459,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     private fun qingshuModifierReleaseAfterPinyin(keyCode: Int, event: KeyEvent?): Boolean {
         val isAlt = keyCode == KeyEvent.KEYCODE_ALT_LEFT || keyCode == KeyEvent.KEYCODE_ALT_RIGHT
         val isShift = keyCode == KeyEvent.KEYCODE_SHIFT_LEFT || keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT
-        if (!isAlt && !isShift) {
-            trackQingshuModifier(keyCode, down = false, repeat = 0) // Fn / Ctrl release
-            return false
-        }
+        if (!isAlt && !isShift) return false
         trackQingshuModifier(keyCode, down = false, repeat = 0)
         if (!qsModifierUsedForPinyin) return false
         if (!qsAltHeld && !qsShiftHeld) qsModifierUsedForPinyin = false
@@ -4150,7 +4102,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         qsAltHeld = false
         qsShiftHeld = false
         qsModifierUsedForPinyin = false
-        qsFnHeld = false
         cancelSpeechRecognition()
         ++speechEditorSession
         disableSmoothCaretExperiment()
@@ -5107,9 +5058,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             toggleChineseLanguage()
             return true
         }
-        if (hasEditableField && handleFnArrowKeyDown(keyCode, event)) {
-            return true
-        }
         val languageCtrl = event?.isCtrlPressed == true || ctrlPressed || ctrlPhysicallyPressed ||
             ctrlLatchActive || ctrlOneShot || ctrlLatchFromNavMode
         val languageAlt = event?.isAltPressed == true || altPressed || altPhysicallyPressed || altLatchActive || altOneShot
@@ -5838,7 +5786,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         val keyCode = remapped.keyCode
         val event = remapped.event
         if (qingshuModifierReleaseAfterPinyin(keyCode, event)) return true
-        if (qsFnArrowKeys.remove(keyCode)) return true
         if (keyCode == KeyEvent.KEYCODE_ENTER && consumeAltEnterUntilKeyUp) {
             consumeAltEnterUntilKeyUp = false
             return true

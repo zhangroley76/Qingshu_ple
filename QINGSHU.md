@@ -44,7 +44,7 @@ ANDROID_NDK_HOME=/path/to/ndk scripts/build-qingjian-engine.sh arm64-v8a
 
 点键盘栏上的候选也能直接选。
 
-**方向键**（中英文都有效）：按住 Fn（Ctrl）再按 W A S D 是上 左 下 右，再加按 Shift 是选取文字。组字中 Fn+A/D 移动候选高亮，Fn+W/S 翻页。这几个键原本的 Ctrl 功能（全选等）因此被取代。
+**方向键**：Plektra 原有，按住 Fn（Ctrl）再按 E S D F 是上 左 下 右（J K L 也是左 下 右）；Fn+A 全选，Fn+W/R 往左/右扩大选取。组字中按方向键会先把高亮候选上屏。
 
 用按住的 Alt 选字（中文模式）不会在放开时进入长按的符号层或锁定，可以按住连续选。
 
