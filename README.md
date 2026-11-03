@@ -20,6 +20,9 @@ Qingshu 是 [Plektra](https://github.com/pkb-rocks/plektra)（Pastiera 的后续
 | 键盘选字 | Alt + W E R / S D F / X C V 选第 1–9 个候选，对应 Titan 键盘上的数字位置；空格上屏高亮的候选 |
 | 连续选字 | 可以只选一段，剩下的拼音继续组字；按住 Alt 能连续选，不会进入长按符号层 |
 | 翻页与高亮 | Alt+P 翻页（翻到最后一页回第一页）；方向键或在键盘栏左右滑可移动高亮；点 ‹ › 翻页 |
+| 中文常用语 | 设置 → 中文常用语：给常用语设代码，在中文模式打代码就出现在候选（例如 `yx` 出邮箱） |
+| 学习常用词 | 选过的词会越来越靠前，切换输入框或关掉中文时存档 |
+| 快捷键说明 | 在任何输入框打 `/?`，弹出所有快捷键（中文按键与当前的 Fn 对应） |
 | 离线联想 | 上屏后显示常接在后面的词，用空格、Alt+数字或点选接下去 |
 | 中文标点 | Alt+标点输入全角标点（数字后的 . , : 保持半角）；SYM 第一页是中文标点 |
 | Shift/Alt 对调 | Titan 的 Alt 位置不好按数字，可以在设置 → Keyboard → Modifiers 对调 |
@@ -36,7 +39,9 @@ Plektra 原有的功能都还在，包括导航模式（Fn+E S D F 方向键）�
 2. 在系统设置里启用「青书 Qingshu」输入法，并设为当前输入法。
 3. 打字时按 Shift+空格切换到中文。
 
-更新时直接覆盖安装，不要先卸载，否则要重新启用输入法。App ID 是 `io.github.zhangroley76.qingshu`，可以和 Plektra 同时安装。APK 约 60 MB，主要是词库和语言模型。
+更新时直接覆盖安装，不要先卸载，否则要重新启用输入法，学到的词也会不见。
+
+**自动更新**：用 [Obtainium](https://github.com/ImranR98/Obtainium) 加入 `https://github.com/zhangroley76/Qingshu_ple`，它会追踪最新的编号版本（`v26.09.N`），有新版就提示安装。App ID 是 `io.github.zhangroley76.qingshu`，可以和 Plektra 同时安装。APK 约 60 MB，主要是词库和语言模型。
 
 ## 当前状态
 

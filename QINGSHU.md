@@ -44,6 +44,10 @@ ANDROID_NDK_HOME=/path/to/ndk scripts/build-qingjian-engine.sh arm64-v8a
 
 点键盘栏上的候选也能直接选。
 
+**常用语**：设置 → 中文常用语。有代码的常用语，在中文模式打它的代码就会出现在候选（`yx` → 邮箱）。资料存在青简的用户目录（`files/qingjian/user/phrases.json`）。
+
+**快捷键说明**：任何输入框打 `/?`（中文下 `/？` 也行）就弹出说明，这两个字会被删掉。
+
 **方向键**（Plektra 原有）：E S D F 是上 左 下 右（J K L 也是左 下 右），A 全选，W/R 往左/右扩大选取。用法：先点一下 Fn 再按键（单次），或连点两下 Fn 锁定导航模式。预设「按住 Fn」会把组合键交给 App（例如 Ctrl+A 全选、Ctrl+S 存档）；要按住 Fn 就当方向键，到设置 → Nav Mode 打开「Ctrl-hold navigation」。Titan 2 Elite 的 Fn 键送出厂商键码 403，Qingshu 把它当成 Ctrl。组字中按这些键会先把高亮候选上屏。
 
 用按住的 Alt 选字（中文模式）不会在放开时进入长按的符号层或锁定，可以按住连续选。
@@ -68,12 +72,12 @@ ANDROID_NDK_HOME=/path/to/ndk scripts/build-qingjian-engine.sh arm64-v8a
 
 依序：
 
-1. 中文学习存不下来：重新载入引擎时 `learned=0`，常用词重启后忘记。
+1. ~~中文学习存不下来~~（已修：青简只在 reset 时存档，现在于输入框结束和关掉中文时存）。
 2. 繁体输出开关（OpenCC 对照，可选台湾用字）。
-3. 中文自定义短语：例如 `yx` 出邮箱，直接是拼音候选。
+3. ~~中文自定义短语~~（已做：设置 → 中文常用语）。
 4. 中英混打：拼音候选里同时列出对应的英文单字。
 5. 模糊音（z/zh、c/ch、s/sh、n/l、an/ang）与简拼（`nh` → 你好）。
-6. 正式签名的发布版，配合 Obtainium 自动更新。
+6. ~~Obtainium 自动更新~~（已做：每次编译版本号递增、发布编号版本；签名不变，免得要卸载重装）。
 
 之后再看：在键盘表面滑动选字（需要 Shizuku）、Numen 的打字统计首页、直角引号「」。
 
