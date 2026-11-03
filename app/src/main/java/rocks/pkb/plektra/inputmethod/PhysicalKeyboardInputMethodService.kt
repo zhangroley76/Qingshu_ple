@@ -3499,7 +3499,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
 
     /**
      * Qingshu: typing "/?" (or "/？" in Chinese) in any text field removes it and shows the
-     * shortcut help, as an alternative to Fn + G.
+     * shortcut help. A typed trigger rather than an Fn chord, so app shortcuts stay free.
      */
     private fun openShortcutHelpIfTyped(oldSelStart: Int, newSelStart: Int, newSelEnd: Int): Boolean {
         if (newSelStart != newSelEnd || newSelStart != oldSelStart + 1) return false
@@ -5111,25 +5111,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             shiftLayerLatched = false
             modifierStateController.clearShiftState(resetPressedState = false)
             toggleChineseLanguage()
-            return true
-        }
-        // Qingshu: Fn + G shows every shortcut.
-        if (hasEditableField && keyCode == KeyEvent.KEYCODE_G && event?.repeatCount == 0 &&
-            (event.isCtrlPressed || ctrlPhysicallyPressed || rocks.pkb.plektra.pinyin.FnAsCtrl.held)
-        ) {
-            consumedLanguageSwitchKeys.add(keyCode_)
-            modifierStateController.registerNonModifierKey()
-            otherKeyInteractedDuringHold = true
-            if (::pinyinController.isInitialized && pinyinController.isComposing) pinyinController.commitHighlighted()
-            if (ctrlOneShot && !ctrlLatchActive) ctrlOneShot = false
-            try {
-                startActivity(
-                    Intent(this, rocks.pkb.plektra.pinyin.QingshuShortcutsActivity::class.java)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                )
-            } catch (error: Exception) {
-                Log.e(TAG, "Shortcut help failed to open", error)
-            }
             return true
         }
         val languageCtrl = event?.isCtrlPressed == true || ctrlPressed || ctrlPhysicallyPressed ||

@@ -14,7 +14,7 @@ import rocks.pkb.plektra.SettingsManager
 import rocks.pkb.plektra.data.mappings.KeyMappingLoader
 
 /**
- * Shortcut help, opened with Fn + G or by typing "/?" in any text field: Qingshu's Chinese keys and the current
+ * Shortcut help, opened by typing "/?" in any text field (no Fn chord, so apps keep theirs): Qingshu's Chinese keys and the current
  * Fn (Nav Mode) mappings, read from the user's own mapping so customisations show up. Any key or
  * a tap closes it.
  */
@@ -86,8 +86,7 @@ class QingshuShortcutsActivity : Activity() {
             .sortedBy { (key, _) -> KEY_ORDER.indexOf(key).let { if (it < 0) 99 else it } }
         for ((key, action) in shown) row("Fn + $key", action)
         row("Fn + Shift + 方向", "一边移动一边选取")
-        row("Fn + G", "显示这个说明")
-        row("打 /?", "在任何输入框也能叫出这个说明")
+        row("打 /?", "在任何输入框叫出这个说明")
         if (!holdNav) {
             column.addView(TextView(this).apply {
                 text = "想按住 Fn 直接用：设置 → Nav Mode → Ctrl-hold navigation。"
