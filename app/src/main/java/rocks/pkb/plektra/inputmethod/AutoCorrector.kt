@@ -400,7 +400,8 @@ object AutoCorrector {
         }
 
         // Determine current IME language when no explicit substitution languages are configured.
-        val imeLanguage = locale ?: if (context != null) getCurrentImeLanguageCode(context) else null
+        // Qingshu: English when nothing tells (Numen's callers ask without a language).
+        val imeLanguage = locale ?: (if (context != null) getCurrentImeLanguageCode(context) else null) ?: "en"
 
         // Build candidate languages. When the user explicitly enables multiple
         // substitution languages, search those languages instead of only the
