@@ -296,6 +296,8 @@ android {
     sourceSets {
         getByName("debug").java.srcDir("src/qingshuTest/java")
         getByName("qa").java.srcDir("src/qingshuTest/java")
+        // QA runs release code, so it takes release's build-type sources (no-op debug hooks).
+        getByName("qa").java.srcDir("src/release/java")
     }
 
     // Validate signing config only when building release
