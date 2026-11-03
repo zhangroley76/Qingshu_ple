@@ -151,7 +151,7 @@ timeout 30 adb shell am start -f 0x20000000 -n "$PKG/rocks.pkb.plektra.QingshuTe
 type_text zongwen
 expect_cand "fuzzy z=zh: zongwen -> 中文" KEYCODE_N "中文"
 key KEYCODE_BACK
-timeout 30 adb shell am start -f 0x20000000 -n "$PKG/rocks.pkb.plektra.QingshuTestActivity" --es fuzzy "" >/dev/null; sleep 1.5
+timeout 30 adb shell am start -f 0x20000000 -n "$PKG/rocks.pkb.plektra.QingshuTestActivity" --es fuzzy none >/dev/null; sleep 1.5
 
 log "zhongwen + Enter commits letters"
 type_text zhongwen
