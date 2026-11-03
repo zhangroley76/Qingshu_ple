@@ -214,6 +214,17 @@ check "autocorrect teh -> the" "hello the "
 key KEYCODE_DEL
 check "Backspace undoes the fix" "hello teh"
 
+log "Auto-cap after a period; Backspace on the capital, then the retyped letter is lowercase"
+key KEYCODE_PERIOD
+key KEYCODE_SPACE
+sleep 0.5
+key KEYCODE_W
+check "auto-cap after period" "teh. W"
+key KEYCODE_DEL
+sleep 0.5
+key KEYCODE_W
+check "Backspace drops the auto-cap" "teh. w"
+
 log "Korean (2-set): English -> 中文 -> 한국어 with Shift+Space; dkssudgktpdy -> 안녕하세요"
 timeout 30 adb shell am start -f 0x20000000 -n "$PKG/rocks.pkb.plektra.QingshuTestActivity" --es languages ko,ja >/dev/null; sleep 1.5
 combo KEYCODE_SHIFT_LEFT KEYCODE_SPACE

@@ -1553,7 +1553,35 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         return autoCapContextKey() == suppressed
     }
 
+    // Qingshu: Backspace right after a letter capitalised by a one-shot Shift (auto-cap) keeps
+    // the retyped letter lowercase. Manual Shift still capitalises; only auto-cap is skipped,
+    // and only at this cursor position.
+    private var lastKeyWasOneShotCapital = false
+    private var skipNextAutoCap = false
+
+    private fun trackAutoCapUndo(keyCode: Int, event: KeyEvent?) {
+        if ((event?.repeatCount ?: 0) > 0 || KeyEvent.isModifierKey(keyCode)) return
+        val afterCapital = lastKeyWasOneShotCapital
+        lastKeyWasOneShotCapital = false
+        if (keyCode == KeyEvent.KEYCODE_DEL) {
+            skipNextAutoCap = afterCapital
+            return
+        }
+        skipNextAutoCap = false
+        lastKeyWasOneShotCapital = shiftOneShot && !capsLockEnabled &&
+            keyCode in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z &&
+            event?.isShiftPressed != true && !modifierStateController.shiftPhysicallyPressed &&
+            !(::pinyinController.isInitialized && pinyinController.active) &&
+            !hangulController.active &&
+            !(::japaneseController.isInitialized && japaneseController.active)
+    }
+
     private fun requestAutoCapShiftOneShot(): Boolean {
+        if (skipNextAutoCap) {
+            skipNextAutoCap = false
+            suppressAutoCapAtCurrentCursor()
+            return false
+        }
         if (isAutoCapSuppressedAtCursor()) return false
         return modifierStateController.requestShiftOneShotFromAutoCap()
     }
@@ -5140,6 +5168,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         val keyCode = remapped.keyCode
         val event = remapped.event
         trackQingshuModifier(keyCode, down = true, repeat = event?.repeatCount ?: 0)
+        trackAutoCapUndo(keyCode, event)
         clicksPowerShiftTapFilter.shouldConsumeKeyDown(
             isClicksPowerKeyboard = DeviceSpecific.resolveInputProfile(
                 event,
