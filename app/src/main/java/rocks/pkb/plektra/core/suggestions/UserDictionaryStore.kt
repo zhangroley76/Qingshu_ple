@@ -6,7 +6,6 @@ import android.util.Log
 import rocks.pkb.plektra.SettingsManager
 import org.json.JSONArray
 import org.json.JSONObject
-import java.util.Locale
 
 class UserDictionaryStore {
 

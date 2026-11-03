@@ -3,6 +3,7 @@ package rocks.pkb.plektra.core.suggestions
 import android.content.Context
 import android.content.res.AssetManager
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -48,6 +49,54 @@ class DictionaryRepositoryTest {
         
         val expected127 = ((127.0 / 255.0).pow(0.75) * 1600.0).toInt()
         assertEquals(expected127, repository.effectiveFrequency(entry127))
+    }
+
+    @Test
+    fun learningAWordOnlyTouchesItsOwnListsAndNeverEditsThemInPlace() {
+        repository.index(
+            listOf(
+                DictionaryEntry("apple", 200, SuggestionSource.MAIN),
+                DictionaryEntry("apply", 100, SuggestionSource.MAIN),
+                DictionaryEntry("zebra", 100, SuggestionSource.MAIN)
+            )
+        )
+        val aBefore = repository.lookupByPrefix("a")
+        val zBefore = repository.lookupByPrefix("z")
+
+        repository.index(listOf(DictionaryEntry("appz", 255, SuggestionSource.USER)), keepExisting = true)
+
+        // Other letters' lists are not re-sorted, and the touched list is replaced, not edited.
+        assertSame(zBefore, repository.lookupByPrefix("z"))
+        assertEquals(listOf("apple", "apply"), aBefore.map { it.word })
+        assertEquals(listOf("appz", "apple", "apply"), repository.lookupByPrefix("a").map { it.word })
+    }
+
+    @Test
+    fun lookupsWhileWordsAreLearnedNeverFail() {
+        val letters = "abcdefghijklmnopqrstuvwxyz"
+        val random = java.util.Random(7)
+        fun word() = (1..(4 + random.nextInt(6))).map { letters[random.nextInt(26)] }.joinToString("")
+        repository.index((1..20_000).map { DictionaryEntry(word(), random.nextInt(255), SuggestionSource.MAIN) })
+        val learned = (1..500).map { word() }
+        val failures = java.util.concurrent.CopyOnWriteArrayList<Throwable>()
+        val running = java.util.concurrent.atomic.AtomicBoolean(true)
+        val reader = Thread {
+            while (running.get()) {
+                try {
+                    for (c in letters) repository.lookupByPrefixMerged("$c${letters[random.nextInt(26)]}", 50)
+                    repository.allCandidates().size
+                } catch (t: Throwable) {
+                    failures += t
+                }
+            }
+        }
+        reader.start()
+        learned.forEach { repository.index(listOf(DictionaryEntry(it, 1, SuggestionSource.USER)), keepExisting = true) }
+        running.set(false)
+        reader.join()
+
+        assertTrue("lookups failed while learning: ${failures.take(3)}", failures.isEmpty())
+        assertTrue(repository.lookupByPrefixMerged(learned.last(), 500).any { it.word == learned.last() })
     }
 
     @Test

@@ -9,7 +9,8 @@ data class SuggestionSettings(
     val maxSuggestions: Int = 3,
     val useKeyboardProximity: Boolean = false,
     val useEditTypeRanking: Boolean = false,
-    val frenchPunctuationSpacing: Boolean = false,
+    val aggressiveAutoReplace: Boolean = false,
+    val contextAwareCorrection: Boolean = false,
     val commaSpace: Boolean = false,
     val autoSpacePunctuation: String = rocks.pkb.plektra.core.Punctuation.DEFAULT_AUTO_SPACE
 )

@@ -49,19 +49,6 @@ class SuggestionControllerNextWordTest {
     }
 
     @Test
-    fun learningCandidateUpdatesImmediatelyDuringTypingAndDeletion() {
-        val controller = newController()
-        typeWord(controller, "unknown")
-        assertEquals("unknown", controller.pendingAddWord())
-        controller.onCharacterCommitted("x", null)
-        assertEquals("unknownx", controller.pendingAddWord())
-        controller.refreshFromInputConnection(null)
-        assertEquals("unknown", controller.pendingAddWord())
-        controller.onCharacterCommitted("x".repeat(100), null)
-        assertEquals(null, controller.pendingAddWord())
-    }
-
-    @Test
     fun learnsBigramAndPredictsAfterSpace() {
         val controller = newController()
 
@@ -76,24 +63,6 @@ class SuggestionControllerNextWordTest {
         assertEquals(listOf("bin", "bar"), latest.map { it.candidate })
         assertEquals(SuggestionKind.NEXT_WORD, latest.first().kind)
         assertEquals(SuggestionKind.STARTER_WORD, latest[1].kind)
-    }
-
-    @Test
-    fun dictionaryReloadAtWordBoundaryKeepsNextWordPredictions() {
-        val controller = newController()
-        typeWord(controller, "ich")
-        pressSpace(controller)
-        typeWord(controller, "bin")
-        pressSpace(controller)
-        typeWord(controller, "ich")
-        pressSpace(controller)
-        assertEquals(SuggestionKind.NEXT_WORD, snapshots.last().first().kind)
-
-        controller.reloadDictionaries()
-        assertTrue(snapshots.last().isEmpty())
-        val restored = waitForSuggestionCandidates("bin", "bar")
-        assertEquals(listOf("bin", "bar"), restored.map { it.candidate })
-        assertEquals(SuggestionKind.NEXT_WORD, restored.first().kind)
     }
 
     @Test
@@ -146,38 +115,8 @@ class SuggestionControllerNextWordTest {
     }
 
     @Test
-    fun currentWordSuggestionsIncludeAdditionalLocales() {
-        val deRepository = FakeDictionaryRepository().apply {
-            isReady = true
-            addTestEntry("deutsch", 200)
-        }
-        val enRepository = FakeDictionaryRepository().apply {
-            isReady = true
-            addTestEntry("english", 200)
-        }
-        val context = RuntimeEnvironment.getApplication()
-        val controller = SuggestionController(
-            context = context,
-            assets = context.assets,
-            settingsProvider = { SuggestionSettings(suggestionsEnabled = true, maxSuggestions = 3) },
-            onSuggestionsUpdated = { snapshots.add(it) },
-            currentLocale = Locale.GERMANY,
-            dictionaryRepositoryFactory = { _, _, _, locale, _ ->
-                if (locale.language == "en") enRepository else deRepository
-            },
-            nextWordPredictorOverride = NextWordPredictor(store),
-            activeSuggestionLocalesProvider = { listOf(Locale.ENGLISH) }
-        )
-        controllers.add(controller)
-
-        typeWord(controller, "eng")
-
-        assertEquals(listOf("english"), waitForSuggestionCandidates("english").map { it.candidate })
-    }
-
-    @Test
     fun emptyInitialContextShowsStarterSuggestions() {
-        fakeRepository.addTestEntry("Plektra", 255, SuggestionSource.DEFAULT_USER)
+        fakeRepository.addTestEntry("Pastiera", 255, SuggestionSource.DEFAULT_USER)
         fakeRepository.addTestEntry("BlackBerry", 255, SuggestionSource.DEFAULT_USER)
         fakeRepository.addTestEntry("Parenzo", 255, SuggestionSource.DEFAULT_USER)
         fakeRepository.addTestEntry("ich", 220)

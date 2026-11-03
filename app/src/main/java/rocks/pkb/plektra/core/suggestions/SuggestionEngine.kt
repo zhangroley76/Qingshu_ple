@@ -3,7 +3,6 @@ package rocks.pkb.plektra.core.suggestions
 import kotlin.math.min
 import java.text.Normalizer
 import java.util.Locale
-import android.util.Log
 
 data class SuggestionResult(
     val candidate: String,
@@ -21,30 +20,33 @@ enum class SuggestionKind {
 
 class SuggestionEngine(
     private val repository: DictionaryRepository,
-    private val locale: Locale = Locale.ITALIAN,
+    private val locale: Locale = Locale.US,
     private val debugLogging: Boolean = false
 ) {
+
+    /** The dictionary's language code; some autocorrect rules are language-specific. */
+    val language: String get() = locale.language
 
     private val accentCache: MutableMap<String, String> = mutableMapOf()
     private val tag = "SuggestionEngine"
     private val wordNormalizeCache: MutableMap<String, String> = mutableMapOf()
     private val accentChars = setOf('à', 'è', 'é', 'ì', 'ò', 'ó', 'ù', 'À', 'È', 'É', 'Ì', 'Ò', 'Ó', 'Ù')
 
-    // Keyboard layout positions - built dynamically based on layout type
-    private var keyboardPositions: Map<Char, Pair<Int, Int>> = buildKeyboardPositions("qwerty")
+    // Physical qwerty key positions, for keyboard-proximity ranking.
+    private val keyboardPositions: Map<Char, Pair<Int, Int>> = buildKeyboardPositions()
 
     private fun isPreferredUserEntry(source: SuggestionSource): Boolean {
         return source == SuggestionSource.USER || source == SuggestionSource.DEFAULT_USER
     }
 
     /**
-     * Build character-to-position map for a given keyboard layout.
-     * Physical key positions match the actual Plektra compact keyboard layout:
+     * Build the character-to-position map for the qwerty layout.
+     * Physical key positions match the actual Pastiera compact keyboard layout:
      * - Row 0: Q W E R T Y U I O P
      * - Row 1: A S D F G H J K L
      * - Row 2: Z X C V [space] B N M
      */
-    private fun buildKeyboardPositions(layout: String): Map<Char, Pair<Int, Int>> {
+    private fun buildKeyboardPositions(): Map<Char, Pair<Int, Int>> {
         // Physical key positions (row, column) for compact keyboard with split bottom row
         val physicalPositions = mapOf(
             // Row 0 (top letter row): Q W E R T Y U I O P
@@ -56,58 +58,29 @@ class SuggestionEngine(
             "KEYCODE_A" to (1 to 0), "KEYCODE_S" to (1 to 1), "KEYCODE_D" to (1 to 2),
             "KEYCODE_F" to (1 to 3), "KEYCODE_G" to (1 to 4), "KEYCODE_H" to (1 to 5),
             "KEYCODE_J" to (1 to 6), "KEYCODE_K" to (1 to 7), "KEYCODE_L" to (1 to 8),
-            // Row 2 (bottom row left): Z X C V
-            "KEYCODE_Z" to (2 to 0), "KEYCODE_X" to (2 to 1), "KEYCODE_C" to (2 to 2),
-            "KEYCODE_V" to (2 to 3),
-            // Row 2 (bottom row right, after spacebar): B N M
-            "KEYCODE_B" to (2 to 6), "KEYCODE_N" to (2 to 7), "KEYCODE_M" to (2 to 8)
+        ) +        // Titan 2 Elite: Alt Z X C V B N M Sym in straight columns, Z under S; Space is a row below.
+        mapOf(
+            "KEYCODE_Z" to (2 to 1), "KEYCODE_X" to (2 to 2), "KEYCODE_C" to (2 to 3), "KEYCODE_V" to (2 to 4),
+            "KEYCODE_B" to (2 to 5), "KEYCODE_N" to (2 to 6), "KEYCODE_M" to (2 to 7)
+        )
+    
+
+        val qwertyMappings = mapOf(
+            "KEYCODE_Q" to 'q', "KEYCODE_W" to 'w', "KEYCODE_E" to 'e', "KEYCODE_R" to 'r',
+            "KEYCODE_T" to 't', "KEYCODE_Y" to 'y', "KEYCODE_U" to 'u', "KEYCODE_I" to 'i',
+            "KEYCODE_O" to 'o', "KEYCODE_P" to 'p', "KEYCODE_A" to 'a', "KEYCODE_S" to 's',
+            "KEYCODE_D" to 'd', "KEYCODE_F" to 'f', "KEYCODE_G" to 'g', "KEYCODE_H" to 'h',
+            "KEYCODE_J" to 'j', "KEYCODE_K" to 'k', "KEYCODE_L" to 'l', "KEYCODE_Z" to 'z',
+            "KEYCODE_X" to 'x', "KEYCODE_C" to 'c', "KEYCODE_V" to 'v', "KEYCODE_B" to 'b',
+            "KEYCODE_N" to 'n', "KEYCODE_M" to 'm'
         )
 
-        // Map keycodes to characters for each layout
-        val layoutMappings = when (layout.lowercase()) {
-            "qwerty" -> mapOf(
-                "KEYCODE_Q" to 'q', "KEYCODE_W" to 'w', "KEYCODE_E" to 'e', "KEYCODE_R" to 'r',
-                "KEYCODE_T" to 't', "KEYCODE_Y" to 'y', "KEYCODE_U" to 'u', "KEYCODE_I" to 'i',
-                "KEYCODE_O" to 'o', "KEYCODE_P" to 'p', "KEYCODE_A" to 'a', "KEYCODE_S" to 's',
-                "KEYCODE_D" to 'd', "KEYCODE_F" to 'f', "KEYCODE_G" to 'g', "KEYCODE_H" to 'h',
-                "KEYCODE_J" to 'j', "KEYCODE_K" to 'k', "KEYCODE_L" to 'l', "KEYCODE_Z" to 'z',
-                "KEYCODE_X" to 'x', "KEYCODE_C" to 'c', "KEYCODE_V" to 'v', "KEYCODE_B" to 'b',
-                "KEYCODE_N" to 'n', "KEYCODE_M" to 'm'
-            )
-            "azerty" -> mapOf(
-                "KEYCODE_Q" to 'a', "KEYCODE_W" to 'z', "KEYCODE_E" to 'e', "KEYCODE_R" to 'r',
-                "KEYCODE_T" to 't', "KEYCODE_Y" to 'y', "KEYCODE_U" to 'u', "KEYCODE_I" to 'i',
-                "KEYCODE_O" to 'o', "KEYCODE_P" to 'p', "KEYCODE_A" to 'q', "KEYCODE_S" to 's',
-                "KEYCODE_D" to 'd', "KEYCODE_F" to 'f', "KEYCODE_G" to 'g', "KEYCODE_H" to 'h',
-                "KEYCODE_J" to 'j', "KEYCODE_K" to 'k', "KEYCODE_L" to 'l', "KEYCODE_Z" to 'w',
-                "KEYCODE_X" to 'x', "KEYCODE_C" to 'c', "KEYCODE_V" to 'v', "KEYCODE_B" to 'b',
-                "KEYCODE_N" to 'n', "KEYCODE_M" to 'm'
-            )
-            "qwertz" -> mapOf(
-                "KEYCODE_Q" to 'q', "KEYCODE_W" to 'w', "KEYCODE_E" to 'e', "KEYCODE_R" to 'r',
-                "KEYCODE_T" to 't', "KEYCODE_Y" to 'z', "KEYCODE_U" to 'u', "KEYCODE_I" to 'i',
-                "KEYCODE_O" to 'o', "KEYCODE_P" to 'p', "KEYCODE_A" to 'a', "KEYCODE_S" to 's',
-                "KEYCODE_D" to 'd', "KEYCODE_F" to 'f', "KEYCODE_G" to 'g', "KEYCODE_H" to 'h',
-                "KEYCODE_J" to 'j', "KEYCODE_K" to 'k', "KEYCODE_L" to 'l', "KEYCODE_Z" to 'y',
-                "KEYCODE_X" to 'x', "KEYCODE_C" to 'c', "KEYCODE_V" to 'v', "KEYCODE_B" to 'b',
-                "KEYCODE_N" to 'n', "KEYCODE_M" to 'm'
-            )
-            else -> return buildKeyboardPositions("qwerty") // Fallback to QWERTY
-        }
-
         // Build character to position map
-        return layoutMappings.mapNotNull { (keycode, char) ->
+        return qwertyMappings.mapNotNull { (keycode, char) ->
             physicalPositions[keycode]?.let { position ->
                 char to position
             }
         }.toMap()
-    }
-
-    /**
-     * Update the keyboard layout for proximity calculations.
-     */
-    fun setKeyboardLayout(layout: String) {
-        keyboardPositions = buildKeyboardPositions(layout)
     }
 
     private enum class EditType { DELETE, SUBSTITUTE, INSERT, OTHER }
@@ -157,6 +130,10 @@ class SuggestionEngine(
         return false
     }
 
+    /** True when two letters are adjacent on the active layout, diagonals included. */
+    fun isNeighborKey(a: Char, b: Char): Boolean =
+        keyboardDistance(a, b)?.let { it <= 1.5 } ?: false
+
     /**
      * Calculate keyboard distance between two characters.
      */
@@ -197,6 +174,20 @@ class SuggestionEngine(
         // Check if characters are swapped
         return input[firstDiffIndex].lowercaseChar() == suggestion[secondDiffIndex].lowercaseChar() &&
                input[secondDiffIndex].lowercaseChar() == suggestion[firstDiffIndex].lowercaseChar()
+    }
+
+    /** True when removing one letter from each equal-length word makes them identical. */
+    private fun isDeleteInsertPair(input: String, suggestion: String): Boolean {
+        if (input.length != suggestion.length || input.length < 2) return false
+        val a = input.lowercase()
+        val b = suggestion.lowercase()
+        for (i in a.indices) {
+            val withoutA = a.removeRange(i, i + 1)
+            for (j in b.indices) {
+                if (withoutA == b.removeRange(j, j + 1)) return true
+            }
+        }
+        return false
     }
 
     /**
@@ -314,7 +305,7 @@ class SuggestionEngine(
         useKeyboardProximity: Boolean = true,
         useEditTypeRanking: Boolean = true
     ): List<SuggestionResult> {
-        if (currentWord.isBlank() || currentWord.length > 48) return emptyList()
+        if (currentWord.isBlank()) return emptyList()
         if (!repository.isReady) return emptyList()
 
         // Apostrophe branch: split and suggest on the root to avoid over-corrections.
@@ -481,8 +472,12 @@ class SuggestionEngine(
             // Apply keyboard proximity filtering when enabled
             if (useKeyboardProximity && distance > 0) {
                 val editType = getEditType(normalizedWord, term)
-                // Filter out distant substitutions (unlikely typos)
-                if (editType == EditType.SUBSTITUTE && !isNearbySubstitution(normalizedWord, term)) {
+                // Filter out distant substitutions (unlikely typos). Equal length does not imply a
+                // substitution: "tommorow" -> "tomorrow" is one extra and one missing letter.
+                if (editType == EditType.SUBSTITUTE &&
+                    !(distance >= 2 && isDeleteInsertPair(normalizedWord, term)) &&
+                    !isNearbySubstitution(normalizedWord, term)
+                ) {
                     return
                 }
             }
@@ -690,9 +685,6 @@ class SuggestionEngine(
 
         return top
     }
-
-    internal fun editDistance(input: String, candidate: String, maxDistance: Int): Int =
-        boundedLevenshtein(normalize(input), normalize(candidate), maxDistance)
 
     private fun boundedLevenshtein(a: String, b: String, maxDistance: Int): Int {
         // Optimal String Alignment distance (Damerau-Levenshtein with adjacent transpositions cost=1)

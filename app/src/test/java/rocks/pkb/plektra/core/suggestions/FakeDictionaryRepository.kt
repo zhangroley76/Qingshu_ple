@@ -31,6 +31,9 @@ class FakeDictionaryRepository : DictionaryRepository {
         entries.removeAll { it.word.equals(word, ignoreCase = true) && it.source == SuggestionSource.USER }
     }
 
+    override fun isUserOrSlangWord(word: String): Boolean =
+        entries.any { it.word.equals(word, ignoreCase = true) && it.source == SuggestionSource.USER }
+
     override fun markUsed(word: String) {
         // No-op for fake
     }

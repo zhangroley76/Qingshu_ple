@@ -14,30 +14,27 @@ class CurrentWordTracker(
 ) {
 
     private val current = StringBuilder()
-    private var overflowLength = 0
     private val tag = "CurrentWordTracker"
     private val debugLogging = false
     val currentWord: String
-        get() = if (overflowLength == 0) current.toString() else ""
+        get() = current.toString()
 
     fun setWord(word: String, notify: Boolean = true) {
         current.clear()
-        current.append(word.take(maxLength))
-        overflowLength = (word.length - maxLength).coerceAtLeast(0)
+        if (word.length <= maxLength) {
+            current.append(word)
+        } else {
+            current.append(word.takeLast(maxLength))
+        }
         if (debugLogging) Log.d(tag, "setWord currentWord='$current'")
         if (notify) {
-            onWordChanged(currentWord)
+            onWordChanged(current.toString())
         }
     }
 
     fun onCharacterCommitted(text: CharSequence) {
         if (text.isEmpty()) return
         text.forEach { char ->
-            // Special case: "\bX" pattern means "replace last with X" (used by multi-tap).
-            if (char == '\b') {
-                onBackspace()
-                return@forEach
-            }
             val normalizedChar = normalizeApostrophe(char)
             val isWordChar = normalizedChar.isLetterOrDigit() ||
                 (normalizedChar == '\'' && current.isNotEmpty() && current.last().isLetterOrDigit())
@@ -45,11 +42,7 @@ class CurrentWordTracker(
                 if (current.length < maxLength) {
                     current.append(normalizedChar)
                     if (debugLogging) Log.d(tag, "currentWord='$current'")
-                    onWordChanged(currentWord)
-                } else {
-                    overflowLength += 1
-                    // Clear suggestions once; subsequent overflow characters do no dictionary work.
-                    if (overflowLength == 1) onWordChanged("")
+                    onWordChanged(current.toString())
                 }
             } else {
                 if (debugLogging) Log.d(tag, "reset on non-letter char='$char'")
@@ -64,16 +57,11 @@ class CurrentWordTracker(
     }
 
     fun onBackspace() {
-        if (overflowLength > 0) {
-            overflowLength -= 1
-            if (overflowLength == 0) onWordChanged(currentWord)
-            return
-        }
         if (current.isNotEmpty()) {
             current.deleteCharAt(current.length - 1)
             if (current.isNotEmpty()) {
                 if (debugLogging) Log.d(tag, "currentWord after backspace='$current'")
-                onWordChanged(currentWord)
+                onWordChanged(current.toString())
             } else {
                 reset()
             }
@@ -103,7 +91,6 @@ class CurrentWordTracker(
         if (current.isNotEmpty()) {
             if (debugLogging) Log.d(tag, "reset currentWord='$current'")
             current.clear()
-            overflowLength = 0
             onWordReset()
         }
     }

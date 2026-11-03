@@ -8,8 +8,8 @@ import org.json.JSONArray
 import java.util.concurrent.CancellationException
 import kotlin.coroutines.coroutineContext
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromStream
 import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -17,8 +17,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.ensureActive
 import kotlinx.serialization.SerializationException
-import java.io.File
-import java.io.FileInputStream
 import java.io.InputStream
 import kotlin.math.pow
 
@@ -39,6 +37,21 @@ interface DictionaryRepository {
     fun topCommonEntries(limit: Int = 16): List<DictionaryEntry>
     fun isKnownWord(word: String): Boolean
     fun ensureLoadScheduled(background: () -> Unit)
+
+    /** A word the user added, or shipped slang; never rewritten. */
+    fun isUserOrSlangWord(word: String): Boolean = false
+
+    /**
+     * A real word known only from the recognised-word list (see KnownWords). Autocorrect leaves
+     * it and its casing alone.
+     */
+    fun isRecognizedWord(word: String): Boolean = false
+
+    /** A common first name (any case), from common/dictionaries/<lang>_names.txt. */
+    fun isFirstName(word: String): Boolean = false
+
+    /** The fix for a well-known misspelling ("recieve" -> "receive"), from <lang>_misspellings.txt. */
+    fun commonMisspellingFix(word: String): String? = null
 }
 
 /**
@@ -48,7 +61,7 @@ class AndroidDictionaryRepository(
     private val context: Context,
     private val assets: AssetManager,
     private val userDictionaryStore: UserDictionaryStore,
-    private val baseLocale: Locale = Locale.ITALIAN,
+    private val baseLocale: Locale = Locale.US,
     private val cachePrefixLength: Int = 4,
     debugLogging: Boolean = false
 ) : DictionaryRepository {
@@ -59,7 +72,7 @@ class AndroidDictionaryRepository(
         
         /**
          * Checks if a dictionary file exists for the given locale.
-         * Returns true if a dictionary is found (serialized format) in assets or custom folder.
+         * Returns true if a serialized dictionary for it is bundled in assets.
          * This is a lightweight check that doesn't require loading the dictionary.
          */
         fun hasDictionaryForLocale(context: Context, locale: Locale): Boolean {
@@ -68,7 +81,7 @@ class AndroidDictionaryRepository(
         
         /**
          * Checks if a dictionary file exists for the given language code.
-         * Returns true if a dictionary is found (serialized format) in assets or custom folder.
+         * Returns true if a serialized dictionary for it is bundled in assets.
          */
         fun hasDictionaryForLocale(context: Context, languageCode: String): Boolean {
             return try {
@@ -87,19 +100,6 @@ class AndroidDictionaryRepository(
                     // If serialized directory doesn't exist, continue
                 }
 
-                // Check custom/imported serialized dictionaries in app storage
-                try {
-                    val localDir = File(context.filesDir, "dictionaries_serialized/custom")
-                    val localFiles = localDir.listFiles { file ->
-                        file.isFile && file.name == "${langCode}_base.dict"
-                    }
-                    if (!localFiles.isNullOrEmpty()) {
-                        return true
-                    }
-                } catch (e: Exception) {
-                    // Ignore errors
-                }
-                
                 false
             } catch (e: Exception) {
                 false
@@ -107,11 +107,16 @@ class AndroidDictionaryRepository(
         }
     }
 
-    private val prefixCache: MutableMap<String, MutableList<DictionaryEntry>> = mutableMapOf()
-    private val normalizedIndex: MutableMap<String, MutableList<DictionaryEntry>> = mutableMapOf()
+    // Read by suggestion jobs on a background thread while words are learned on the main thread.
+    private val prefixCache: MutableMap<String, MutableList<DictionaryEntry>> = ConcurrentHashMap()
+    private val normalizedIndex: MutableMap<String, MutableList<DictionaryEntry>> = ConcurrentHashMap()
     @Volatile private var symSpell: SymSpell? = null
     @Volatile private var symSpellBuilt: Boolean = false
     @Volatile private var topCommonEntriesCache: List<DictionaryEntry>? = null
+    @Volatile private var localeExtraWords: Set<String> = emptySet()
+    @Volatile private var knownWords: KnownWords = KnownWords.EMPTY
+    @Volatile private var firstNames: KnownWords = KnownWords.EMPTY
+    @Volatile private var misspellings: Map<String, String> = emptyMap()
     @Volatile override var isReady: Boolean = false
         internal set
     @Volatile private var loadStarted: Boolean = false
@@ -137,32 +142,15 @@ class AndroidDictionaryRepository(
             try {
                 val startTime = System.currentTimeMillis()
 
-                // Move legacy local dictionaries into the custom folder to isolate imports.
-                migrateLegacyLocalDictionaries()
-
-                // Determine paths for custom and bundled dictionaries
-                val customDir = File(context.filesDir, "dictionaries_serialized/custom").apply { mkdirs() }
-                val customFile = File(customDir, "${baseLocale.language}_base.dict")
                 coroutineContext.ensureActive()
                 val serializedPath = "common/dictionaries_serialized/${baseLocale.language}_base.dict"
-                val loadedSerialized = when {
-                    customFile.exists() -> {
-                        Log.i(tag, "Loading CUSTOM dictionary from ${customFile.absolutePath}")
-                        loadSerializedFromFile(customFile)
-                    }
-                    else -> {
-                        Log.i(tag, "Loading BUNDLED dictionary from assets: $serializedPath")
-                        loadSerializedFromAssets(serializedPath)
-                    }
-                }
+                Log.i(tag, "Loading dictionary from assets: $serializedPath")
+                val loadedSerialized = loadSerializedFromAssets(serializedPath)
 
                 if (!loadedSerialized) {
-                    Log.i(tag, "No usable base dictionary for ${baseLocale.language}; loading user words only")
-                    prefixCache.clear()
-                    normalizedIndex.clear()
-                    symSpell = null
-                    symSpellBuilt = false
-                    topCommonEntriesCache = null
+                    Log.e(tag, "Failed to load serialized dictionary for locale=${baseLocale.language}")
+                    synchronized(this) { loadStarted = false }
+                    return
                 }
 
                 val loadTime = System.currentTimeMillis() - startTime
@@ -174,6 +162,16 @@ class AndroidDictionaryRepository(
                 if (defaultUserEntries.isNotEmpty()) {
                     index(defaultUserEntries, keepExisting = true)
                 }
+
+                // Shipped language extras such as English texting slang; not user-editable.
+                val localeExtras = loadLocaleExtras()
+                if (localeExtras.isNotEmpty()) {
+                    index(localeExtras, keepExisting = true)
+                    localeExtraWords = localeExtras.mapTo(HashSet()) { normalize(it.word) }
+                }
+                knownWords = loadKnownWords()
+                firstNames = loadWordList("names")
+                misspellings = loadMisspellings()
 
                 // Always add user entries
                 val userEntries = userDictionaryStore.loadUserEntries(context)
@@ -254,13 +252,15 @@ class AndroidDictionaryRepository(
     override fun removeUserEntry(word: String) {
         userDictionaryStore.removeWord(context, word)
         val normalized = normalize(word)
-        normalizedIndex[normalized]?.removeAll { entry ->
+        val isRemoved = { entry: DictionaryEntry ->
             entry.source == SuggestionSource.USER && entry.word.equals(word, ignoreCase = true)
         }
-        prefixCache.values.forEach { entries ->
-            entries.removeAll { entry ->
-                entry.source == SuggestionSource.USER && entry.word.equals(word, ignoreCase = true)
-            }
+        // Swap in filtered copies (lookups may be iterating the lists); only the word's own
+        // prefixes can contain it.
+        normalizedIndex[normalized]?.let { normalizedIndex[normalized] = it.filterNot(isRemoved).toMutableList() }
+        for (length in 1..normalized.length.coerceAtMost(cachePrefixLength)) {
+            val prefix = normalized.take(length)
+            prefixCache[prefix]?.let { prefixCache[prefix] = it.filterNot(isRemoved).toMutableList() }
         }
         topCommonEntriesCache = null
     }
@@ -272,7 +272,22 @@ class AndroidDictionaryRepository(
     override fun isKnownWord(word: String): Boolean {
         if (!isReady) return false
         val normalized = normalize(word)
-        return normalizedIndex[normalized]?.isNotEmpty() == true
+        return normalizedIndex[normalized]?.isNotEmpty() == true || word in knownWords
+    }
+
+    override fun isRecognizedWord(word: String): Boolean = isReady && word in knownWords
+
+    override fun isFirstName(word: String): Boolean = isReady && word in firstNames
+
+    override fun commonMisspellingFix(word: String): String? = if (isReady) misspellings[word.lowercase()] else null
+
+    override fun isUserOrSlangWord(word: String): Boolean {
+        if (!isReady) return false
+        val normalized = normalize(word)
+        if (normalized in localeExtraWords) return true
+        return normalizedIndex[normalized].orEmpty().any { entry ->
+            entry.source == SuggestionSource.USER && entry.word.equals(word, ignoreCase = true)
+        }
     }
 
     override fun topCommonEntries(limit: Int): List<DictionaryEntry> {
@@ -420,24 +435,6 @@ class AndroidDictionaryRepository(
     }
 
     @OptIn(ExperimentalSerializationApi::class)
-    private suspend fun loadSerializedFromFile(file: File): Boolean {
-        Log.i(tag, "Attempting to load serialized dictionary from file: ${file.absolutePath}")
-        return try {
-            coroutineContext.ensureActive()
-            FileInputStream(file).use { input ->
-                decodeSerializedDictionary(input)
-            }
-            true
-        } catch (e: SerializationException) {
-            Log.e(tag, "Failed to deserialize dictionary from file: ${e.message}", e)
-            false
-        } catch (e: Exception) {
-            Log.e(tag, "Error loading serialized dictionary from file: ${e.javaClass.simpleName} - ${e.message}", e)
-            false
-        }
-    }
-
-    @OptIn(ExperimentalSerializationApi::class)
     private fun decodeSerializedDictionary(input: InputStream) {
         val bytes = input.readBytes()
         val sizeKb = bytes.size / 1024
@@ -517,6 +514,43 @@ class AndroidDictionaryRepository(
     }
 
     /**
+     * Words the base dictionary lacks, from common/dictionaries/<lang>_extra.json. Words already
+     * in the base dictionary are skipped so their casing and frequency stay.
+     */
+    private fun loadLocaleExtras(): List<DictionaryEntry> = try {
+        val json = assets.open("common/dictionaries/${baseLocale.language}_extra.json")
+            .bufferedReader().use { it.readText() }
+        val array = JSONArray(json)
+        List(array.length()) { i ->
+            val obj = array.getJSONObject(i)
+            DictionaryEntry(obj.getString("w"), obj.optInt("f", 1), SuggestionSource.MAIN)
+        }.filter { entry -> normalizedIndex[normalize(entry.word)].isNullOrEmpty() }
+    } catch (_: Exception) {
+        emptyList() // Most languages have no extras file.
+    }
+
+    /** Real words beyond the dictionary for this language (common/dictionaries/<lang>_known.txt). */
+    private fun loadKnownWords(): KnownWords = loadWordList("known")
+
+    /** "typo->fix" lines from common/dictionaries/<lang>_misspellings.txt; '#' lines are skipped. */
+    private fun loadMisspellings(): Map<String, String> = try {
+        assets.open("common/dictionaries/${baseLocale.language}_misspellings.txt").bufferedReader().useLines { lines ->
+            lines.filter { it.isNotEmpty() && !it.startsWith("#") }
+                .mapNotNull { line -> line.split("->").takeIf { it.size == 2 }?.let { (typo, fix) -> typo to fix } }
+                .toMap(HashMap())
+        }
+    } catch (_: java.io.IOException) {
+        emptyMap() // Most languages have no list.
+    }
+
+    private fun loadWordList(kind: String): KnownWords = try {
+        assets.open("common/dictionaries/${baseLocale.language}_$kind.txt")
+            .bufferedReader().useLines { KnownWords.parse(it) }
+    } catch (_: java.io.IOException) {
+        KnownWords.EMPTY // Most languages have no list.
+    }
+
+    /**
      * Loads optional default user entries from a writable file, falling back to the asset.
      * Format: [{ "w": "word", "f": 10 }, ...]
      */
@@ -557,6 +591,10 @@ class AndroidDictionaryRepository(
     }
 
     internal fun index(entries: List<DictionaryEntry>, keepExisting: Boolean = false) {
+        if (keepExisting && isReady) {
+            addToLiveIndex(entries)
+            return
+        }
         if (!keepExisting) {
             prefixCache.clear()
             normalizedIndex.clear()
@@ -583,32 +621,54 @@ class AndroidDictionaryRepository(
         }
     }
 
+    /**
+     * Adds words to a dictionary that suggestion jobs may be reading on another thread: each
+     * touched list is rebuilt sorted and swapped in, never modified or re-sorted in place.
+     */
+    private fun addToLiveIndex(entries: List<DictionaryEntry>) {
+        val byNormalized = LinkedHashMap<String, MutableList<DictionaryEntry>>()
+        val byPrefix = LinkedHashMap<String, MutableList<DictionaryEntry>>()
+        entries.forEach { entry ->
+            val normalized = normalize(entry.word)
+            byNormalized.getOrPut(normalized) { mutableListOf() }.add(entry)
+            for (length in 1..normalized.length.coerceAtMost(cachePrefixLength)) {
+                byPrefix.getOrPut(normalized.take(length)) { mutableListOf() }.add(entry)
+            }
+        }
+        val order = compareByDescending<DictionaryEntry> { effectiveFrequency(it) }
+        byNormalized.forEach { (normalized, added) ->
+            val kept = normalizedIndex[normalized].orEmpty().filterNot { old ->
+                added.any { it.word.equals(old.word, ignoreCase = true) && it.source == old.source }
+            }
+            normalizedIndex[normalized] = (kept + added).sortedWith(order).toMutableList()
+        }
+        byPrefix.forEach { (prefix, added) ->
+            prefixCache[prefix] = (prefixCache[prefix].orEmpty() + added).sortedWith(order).toMutableList()
+        }
+        topCommonEntriesCache = null
+    }
+
     private fun purgeUserEntries(currentUserEntries: List<DictionaryEntry>) {
         if (!isReady && !loadStarted) return
         val keepSet = currentUserEntries.map { it.word.lowercase(baseLocale) }.toSet()
-        // Remove USER entries not in keepSet
-        normalizedIndex.forEach { (_, list) ->
-            val iterator = list.iterator()
-            while (iterator.hasNext()) {
-                val entry = iterator.next()
-                if (entry.source == SuggestionSource.USER &&
-                    !keepSet.contains(entry.word.lowercase(baseLocale))
-                ) {
-                    iterator.remove()
-                }
-            }
+        val isStale = { entry: DictionaryEntry ->
+            entry.source == SuggestionSource.USER && !keepSet.contains(entry.word.lowercase(baseLocale))
         }
-        // Rebuild prefixCache from current normalizedIndex
-        prefixCache.clear()
+        // Rebuilt off to the side and swapped in key by key: lookups may be reading the live lists.
         normalizedIndex.forEach { (normalized, list) ->
-            val maxPrefixLength = normalized.length.coerceAtMost(cachePrefixLength)
-            for (length in 1..maxPrefixLength) {
-                val prefix = normalized.take(length)
-                val prefixList = prefixCache.getOrPut(prefix) { mutableListOf() }
-                prefixList.addAll(list)
+            if (list.any(isStale)) normalizedIndex[normalized] = list.filterNot(isStale).toMutableList()
+        }
+        val order = compareByDescending<DictionaryEntry> { effectiveFrequency(it) }
+        val rebuilt = HashMap<String, MutableList<DictionaryEntry>>()
+        normalizedIndex.forEach { (normalized, list) ->
+            for (length in 1..normalized.length.coerceAtMost(cachePrefixLength)) {
+                rebuilt.getOrPut(normalized.take(length)) { mutableListOf() }.addAll(list)
             }
         }
-        sortCachesByEffectiveFrequency()
+        rebuilt.forEach { (prefix, list) -> prefixCache[prefix] = list.sortedWith(order).toMutableList() }
+        prefixCache.keys.retainAll(rebuilt.keys)
+        normalizedIndex.forEach { (normalized, list) -> normalizedIndex[normalized] = list.sortedWith(order).toMutableList() }
+        topCommonEntriesCache = null
     }
 
     private fun buildSymSpell() {
@@ -620,34 +680,6 @@ class AndroidDictionaryRepository(
         }
         symSpell = engine
         symSpellBuilt = true
-    }
-
-    /**
-     * Move legacy dictionaries from the root local directory into the custom folder.
-     * This isolates user-imported dictionaries from bundled assets.
-     */
-    private fun migrateLegacyLocalDictionaries() {
-        val rootDir = File(context.filesDir, "dictionaries_serialized")
-        val customDir = File(rootDir, "custom").apply { mkdirs() }
-        if (!rootDir.exists() || rootDir == customDir) return
-
-        rootDir.listFiles()?.forEach { file ->
-            if (file.isDirectory && file.name == "custom") return@forEach
-            if (file.isFile && file.extension == "dict") {
-                val dest = File(customDir, file.name)
-                if (!dest.exists()) {
-                    val moved = file.renameTo(dest)
-                    Log.i(tag, "Migrating legacy dictionary ${file.name} to custom folder: success=$moved")
-                    if (!moved) {
-                        file.copyTo(dest, overwrite = false)
-                        file.delete()
-                    }
-                } else {
-                    Log.i(tag, "Removing duplicate legacy dictionary ${file.name}")
-                    file.delete()
-                }
-            }
-        }
     }
 
     private fun addToSymSpell(entries: List<DictionaryEntry>) {
