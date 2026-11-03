@@ -1,0 +1,161 @@
+From 6f1be749e0c9c8c623bad816635cbd4c1146d729 Mon Sep 17 00:00:00 2001
+From: Qingshu <noreply@github.com>
+Date: Mon, 2 Nov 2026 22:59:31 -0800
+Subject: [PATCH] Qingshu: association follows traditional output
+
+---
+ Cargo.lock                               |  1 +
+ apps/android/core/Cargo.toml             |  2 +
+ apps/android/core/src/association.rs     | 50 +++++++++++++++++++++++-
+ apps/android/core/src/jni/association.rs | 21 +++++++++-
+ 4 files changed, 72 insertions(+), 2 deletions(-)
+
+diff --git a/Cargo.lock b/Cargo.lock
+index 07c78d7..615fac8 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -3710,6 +3710,7 @@ name = "qingjian-android"
+ version = "0.3.2"
+ dependencies = [
+  "bamboo-slip-i18n",
++ "ferrous-opencc",
+  "jiff",
+  "jni 0.21.1",
+  "qingjian-core",
+diff --git a/apps/android/core/Cargo.toml b/apps/android/core/Cargo.toml
+index a09d612..bafb49c 100644
+--- a/apps/android/core/Cargo.toml
++++ b/apps/android/core/Cargo.toml
+@@ -12,6 +12,8 @@ crate-type = ["cdylib", "lib"]
+ 
+ [dependencies]
+ jiff.workspace = true
++# Qingshu: traditional → simplified for association context (the engine itself only converts s → t)
++ferrous-opencc = { workspace = true, features = ["t2s-conversion"] }
+ jni = "0.21"
+ qingjian-core.workspace = true
+ qingjian-dictionary.workspace = true
+diff --git a/apps/android/core/src/association.rs b/apps/android/core/src/association.rs
+index b332f43..bf5c2e3 100644
+--- a/apps/android/core/src/association.rs
++++ b/apps/android/core/src/association.rs
+@@ -4,6 +4,9 @@
+ 
+ use std::path::Path;
+ 
++use ferrous_opencc::OpenCC;
++use ferrous_opencc::config::BuiltinConfig;
++use qingjian_core::{Traditional, TraditionalVariant};
+ use qingjian_lm::{BigramModel, LmError};
+ 
+ /// 往回找前词时最多看几个字。
+@@ -11,17 +14,52 @@ const MAX_PREVIOUS_CHARS: usize = 8;
+ 
+ pub struct Association {
+     model: BigramModel,
++    /// 繁体输出时：联想词转繁体，光标前的繁体转回简体再查（语言模型是简体）。
++    traditional: Option<(Traditional, OpenCC)>,
+ }
+ 
+ impl Association {
+     pub fn open(path: &Path) -> Result<Self, LmError> {
+         Ok(Self {
+             model: BigramModel::from_path(path)?,
++            traditional: None,
+         })
+     }
+ 
+     pub fn from_model(model: BigramModel) -> Self {
+-        Self { model }
++        Self { model, traditional: None }
++    }
++
++    /// 跟输入法的繁体输出一致：`taiwan` / `hongkong` / `standard`，其他（`off`）是简体。
++    pub fn set_traditional(&mut self, variant: &str) {
++        let (variant, back) = match variant {
++            "taiwan" => (TraditionalVariant::Taiwan, BuiltinConfig::Tw2s),
++            "hongkong" => (TraditionalVariant::Hongkong, BuiltinConfig::Hk2s),
++            "standard" => (TraditionalVariant::Standard, BuiltinConfig::T2s),
++            _ => {
++                self.traditional = None;
++                return;
++            }
++        };
++        self.traditional = match OpenCC::from_config(back) {
++            Ok(back) => Some((Traditional::new(variant), back)),
++            Err(error) => {
++                tracing::error!(%error, "繁转简字典建不起来，联想保持简体");
++                None
++            }
++        };
++    }
++
++    /// 联想词；繁体输出时前后都转换。
++    pub fn after_converted(&self, text: &str, limit: usize) -> Vec<String> {
++        match &self.traditional {
++            None => self.after(text, limit),
++            Some((to_traditional, to_simplified)) => self
++                .after(&to_simplified.convert(text), limit)
++                .into_iter()
++                .map(|word| to_traditional.convert(&word))
++                .collect(),
++        }
+     }
+ 
+     /// `text`（光标前刚上屏的文字）之后的联想词，最多 `limit` 个。
+@@ -73,6 +111,16 @@ mod tests {
+         Association::from_model(BigramModel::parse(unigram, bigram).unwrap())
+     }
+ 
++    #[test]
++    fn traditional_output_converts_both_ways() {
++        let mut a = association();
++        a.set_traditional("taiwan");
++        // 联想词转成台湾字形；关掉后回到简体
++        assert_eq!(a.after_converted("今天", 5), vec!["天氣"]);
++        a.set_traditional("off");
++        assert_eq!(a.after_converted("今天", 5), vec!["天气"]);
++    }
++
+     #[test]
+     fn follows_the_longest_known_word_at_the_end() {
+         let a = association();
+diff --git a/apps/android/core/src/jni/association.rs b/apps/android/core/src/jni/association.rs
+index c043844..a2fca21 100644
+--- a/apps/android/core/src/jni/association.rs
++++ b/apps/android/core/src/jni/association.rs
+@@ -63,7 +63,7 @@ pub extern "system" fn Java_app_qingjian_inputmethod_core_Native_associate<'loca
+     let limit = usize::try_from(limit).unwrap_or(0).min(60);
+     // SAFETY: handle came from createAssociation and is only used on the shell's main thread.
+     let association = unsafe { &*(handle as *const Association) };
+-    let words = match catch_unwind(AssertUnwindSafe(|| association.after(&before, limit))) {
++    let words = match catch_unwind(AssertUnwindSafe(|| association.after_converted(&before, limit))) {
+         Ok(words) => words,
+         Err(_) => return std::ptr::null_mut(),
+     };
+@@ -72,3 +72,22 @@ pub extern "system" fn Java_app_qingjian_inputmethod_core_Native_associate<'loca
+         .map(|s| s.into_raw())
+         .unwrap_or(std::ptr::null_mut())
+ }
++
++/// 联想跟着繁体输出：`variant` 为 `taiwan` / `hongkong` / `standard`，`off` 为简体。
++#[unsafe(no_mangle)]
++pub extern "system" fn Java_app_qingjian_inputmethod_core_Native_setAssociationTraditional<'local>(
++    mut env: JNIEnv<'local>,
++    _this: JObject<'local>,
++    handle: jlong,
++    variant: JString<'local>,
++) {
++    if handle == 0 {
++        return;
++    }
++    let Ok(variant) = env.get_string(&variant).map(String::from) else {
++        return;
++    };
++    // SAFETY: handle came from createAssociation and is only used on the shell's main thread.
++    let association = unsafe { &mut *(handle as *mut Association) };
++    let _ = catch_unwind(AssertUnwindSafe(|| association.set_traditional(&variant)));
++}
+-- 
+2.43.0
+

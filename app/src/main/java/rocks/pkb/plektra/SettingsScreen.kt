@@ -541,13 +541,13 @@ private fun SettingsMainScreen(
 
             SettingsGroupDivider(stringResource(R.string.settings_group_utility))
 
-            // Qingshu: the user's Chinese phrases (a code typed in pinyin offers the phrase).
+            // Qingshu: Chinese options (traditional output) and the user's phrases.
             SettingsCategoryRow(
                 icon = Icons.Filled.Tune,
-                title = "中文常用语",
-                description = "打代码出常用语，例如 yx 出邮箱",
+                title = "中文",
+                description = "繁体输出、常用语（例如 yx 出邮箱）",
                 onClick = {
-                    context.startActivity(Intent(context, rocks.pkb.plektra.pinyin.QingshuPhrasesActivity::class.java))
+                    context.startActivity(Intent(context, rocks.pkb.plektra.pinyin.QingshuChineseSettingsActivity::class.java))
                 }
             )
 

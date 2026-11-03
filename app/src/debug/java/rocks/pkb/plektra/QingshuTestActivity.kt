@@ -51,6 +51,15 @@ class QingshuTestActivity : Activity() {
         field.requestFocus()
     }
 
+    /** `am start -f 0x20000000 ... --es traditional taiwan` switches the output form mid-test. */
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        intent.getStringExtra("traditional")?.let {
+            rocks.pkb.plektra.pinyin.QingshuChineseSettings.setTraditional(this, it)
+            Log.i(TAG, "traditional=$it")
+        }
+    }
+
     private companion object {
         const val TAG = "QingshuTest"
     }

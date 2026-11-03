@@ -121,6 +121,19 @@ fi
 check "phrase committed" "test@example.com"
 key KEYCODE_BACK
 
+log "traditional output (Taiwan): shuru -> 輸入"
+traditional() { timeout 30 adb shell am start -f 0x20000000 -n "$PKG/rocks.pkb.plektra.QingshuTestActivity" --es traditional "$1" >/dev/null; sleep 1.5; }
+traditional taiwan
+type_text shuru
+key KEYCODE_SPACE
+check "traditional 輸入" "輸入"
+key KEYCODE_BACK
+traditional off
+type_text shuru
+key KEYCODE_SPACE
+check "back to simplified 输入" "輸入输入"
+key KEYCODE_BACK
+
 log "zhongwen + Enter commits letters"
 type_text zhongwen
 key KEYCODE_ENTER

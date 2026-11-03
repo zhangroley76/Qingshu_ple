@@ -412,6 +412,12 @@ class PinyinController(
     /** The phrase list changed in settings. */
     fun reloadPhrases() = engine.reloadPhrases()
 
+    /** Chinese settings changed (traditional output, ...). */
+    fun applySettings() {
+        if (frame.isComposing) abandon(commitLetters = true)
+        engine.applySettings()
+    }
+
     fun destroy() {
         engine.destroy()
     }

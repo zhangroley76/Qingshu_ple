@@ -55,6 +55,7 @@ class PinyinEngine(context: Context) {
                     handle = created
                     associationHandle = association
                     state = State.READY
+                    applySettings()
                     Log.i(TAG, "Engine ready in ${System.currentTimeMillis() - started} ms (association=${association != 0L})")
                     val listeners = readyListeners.toList()
                     readyListeners.clear()
@@ -167,6 +168,26 @@ class PinyinEngine(context: Context) {
         } catch (error: Throwable) {
             Log.e(TAG, "flush failed", error)
         }
+    }
+
+    /** Sends Qingshu's Chinese settings (traditional output, fuzzy pinyin, ...) to the engine. */
+    fun applySettings() {
+        if (!isReady) return
+        val variant = QingshuChineseSettings.traditional(appContext)
+        try {
+            Native.setOptions(handle, QingshuChineseSettings.optionsJson(appContext))
+            Native.setTraditional(handle, variant != QingshuChineseSettings.TRADITIONAL_OFF)
+        } catch (error: Throwable) {
+            Log.e(TAG, "applySettings failed", error)
+        }
+        if (associationHandle != 0L) {
+            try {
+                Native.setAssociationTraditional(associationHandle, variant)
+            } catch (error: UnsatisfiedLinkError) {
+                Log.w(TAG, "Engine has no traditional association; association stays simplified")
+            }
+        }
+        Log.i(TAG, "Settings applied: traditional=$variant")
     }
 
     /** Re-reads the user phrases after the settings screen changed them. */

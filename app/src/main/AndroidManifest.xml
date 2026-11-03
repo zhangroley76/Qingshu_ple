@@ -148,6 +148,7 @@
         
         <activity android:name=".KeyboardLayoutActivity" android:exported="false" android:theme="@style/Theme.Plektra" />
         <activity android:name=".pinyin.QingshuPhrasesActivity" android:exported="false" android:theme="@style/Theme.Plektra" />
+        <activity android:name=".pinyin.QingshuChineseSettingsActivity" android:exported="false" android:theme="@style/Theme.Plektra" />
         <activity android:name=".pinyin.QingshuShortcutsActivity" android:exported="false"
             android:theme="@style/Theme.Plektra.OverlayDialog" android:excludeFromRecents="true"
             android:noHistory="true" android:taskAffinity="" />

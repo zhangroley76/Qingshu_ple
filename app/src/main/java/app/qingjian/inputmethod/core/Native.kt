@@ -53,6 +53,15 @@ internal object Native {
     /** Re-reads the phrases after they changed, so their codes reach the candidates. */
     external fun reloadPhrases(handle: Long, userDir: String)
 
+    /**
+     * Input options as JSON (Qingjian's `InputOptions`: `fuzzy`, `full_width_punctuation`,
+     * `english_in_chinese`, `chinese_first`, `traditional_variant`, ...). Returns a frame.
+     */
+    external fun setOptions(handle: Long, options: String): String?
+
+    /** Traditional output on/off, in the variant given by [setOptions]. Returns a frame. */
+    external fun setTraditional(handle: Long, on: Boolean): String?
+
     // --- Offline association (Qingshu patch, third_party/qingjian/0001-qingshu-association.patch) ---
 
     /** Opens the language model (lm.qj) for association; returns 0 on failure. */
@@ -62,4 +71,7 @@ internal object Native {
 
     /** Likely next words after [before] (text before the cursor), as a JSON array of strings. */
     external fun associate(handle: Long, before: String, limit: Int): String?
+
+    /** Association follows the traditional output: `taiwan`, `hongkong`, `standard` or `off` (0002 patch). */
+    external fun setAssociationTraditional(handle: Long, variant: String)
 }
