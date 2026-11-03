@@ -223,21 +223,20 @@ type_text ekfr
 key KEYCODE_DEL
 key KEYCODE_SPACE
 check "Korean backspace by stroke (닭 -> 달)" "안녕하세요 달 "
-log "Japanese: 한국어 -> 日本語; nihon -> 日本, kaku -> 書く (okurigana), then English"
+log "Japanese: 한국어 -> 日本語; nihon -> 日本, yomu -> 読む (okurigana), then English"
 combo KEYCODE_SHIFT_LEFT KEYCODE_SPACE
 sleep 2
 for _ in $(seq 1 20); do timeout 30 adb logcat -d | grep -q 'QingshuJapanese.*Dictionary ready' && break; sleep 1; done
 type_text nihon
 key KEYCODE_SPACE
 check "Japanese nihon -> 日本" "달 日本"
-type_text kaku
-jcands=$(timeout 30 adb exec-out uiautomator dump /dev/tty 2>/dev/null | grep -o '書く' | head -1)
+type_text yomu
 key KEYCODE_SPACE
-check "Japanese kaku -> 書く" "日本書く"
+check "Japanese yomu -> 読む (okurigana)" "日本読む"
 combo KEYCODE_SHIFT_LEFT KEYCODE_SPACE
 sleep 1
 type_text abc
-check "back to English after 日本語" "書くabc"
+check "back to English after 日本語" "読むabc"
 
 log "shortcut help: typing /? removes it and opens the help window"
 help_open() { timeout 30 adb shell dumpsys activity activities | grep -q 'QingshuShortcutsActivity'; }

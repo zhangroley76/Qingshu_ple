@@ -182,14 +182,19 @@ class JapaneseController(
         learned(reading)?.let { add(it, reading.length) }
         val dictionary = JapaneseDictionary.get(appContext) { if (isComposing) refresh() }
         dictionary?.lookup(reading)?.forEach { add(it, reading.length) }
-        // Verbs and adjectives with okurigana: 書く → "かk" + く.
+        // Verbs and adjectives with okurigana: 読む → "よm" + む. Only the longest stem that has
+        // words; when the reading is a word by itself, only for common inflected endings, so
+        // にほん doesn't also offer 似ほん.
         if (dictionary != null) {
+            val hasWord = out.isNotEmpty()
             for (split in reading.length - 1 downTo 1) {
                 val okuri = reading.substring(split)
+                if (hasWord && okuri !in COMMON_OKURI) continue
                 val letter = okuriLetter(okuri[0]) ?: continue
                 val stems = dictionary.lookup(reading.substring(0, split) + letter)
+                if (stems.isEmpty()) continue
                 stems.forEach { add(it + okuri, reading.length) }
-                if (stems.isNotEmpty() && out.size >= PAGE_SIZE) break
+                break
             }
         }
         add(reading, reading.length)
@@ -336,6 +341,13 @@ class JapaneseController(
         private const val PREFS = "qingshu_japanese"
         private const val KEY_LEARNED = "learned"
         private const val MAX_LEARNED = 3000
+
+        /** Okurigana endings common enough to offer even when the reading is also a word. */
+        private val COMMON_OKURI = setOf(
+            "う", "く", "ぐ", "す", "つ", "ぬ", "ぶ", "む", "る", "い", "て", "た", "で", "だ",
+            "き", "し", "ち", "に", "み", "り", "ます", "ました", "ない", "なかった", "まして", "って", "った",
+            "いて", "いた", "んで", "んだ", "かった", "くて", "ければ", "れる", "られる", "せる", "よう"
+        )
 
         private val PUNCTUATION = mapOf(
             ',' to "、", '.' to "。", '?' to "？", '!' to "！", ':' to "：", ';' to "；",
