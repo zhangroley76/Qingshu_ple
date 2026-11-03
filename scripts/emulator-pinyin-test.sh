@@ -147,7 +147,11 @@ key KEYCODE_BACK
 type_text hello
 expect_cand "English word in pinyin candidates" KEYCODE_O "hello"
 key KEYCODE_BACK
-timeout 30 adb shell am start -f 0x20000000 -n "$PKG/rocks.pkb.plektra.QingshuTestActivity" --es fuzzy z_zh >/dev/null; sleep 1.5
+applied_count() { timeout 30 adb logcat -d -s QingshuPinyin:I | grep -c 'Settings applied'; }
+before=$(applied_count)
+timeout 30 adb shell am start -f 0x20000000 -n "$PKG/rocks.pkb.plektra.QingshuTestActivity" --es fuzzy z_zh >/dev/null
+# The keyboard applies settings when their broadcast arrives; wait for it.
+for _ in $(seq 1 20); do [ "$(applied_count)" -gt "$before" ] && break; sleep 0.5; done
 type_text zongwen
 expect_cand "fuzzy z=zh: zongwen -> 中文" KEYCODE_N "中文"
 key KEYCODE_BACK
