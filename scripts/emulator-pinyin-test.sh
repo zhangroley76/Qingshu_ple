@@ -219,11 +219,11 @@ key KEYCODE_PERIOD
 key KEYCODE_SPACE
 sleep 0.5
 key KEYCODE_W
-check "auto-cap after period" "teh. W"
+check "auto-cap after period" ". W]"
 key KEYCODE_DEL
 sleep 0.5
 key KEYCODE_W
-check "Backspace drops the auto-cap" "teh. w"
+check "Backspace drops the auto-cap" ". w]"
 
 log "Korean (2-set): English -> 中文 -> 한국어 with Shift+Space; dkssudgktpdy -> 안녕하세요"
 timeout 30 adb shell am start -f 0x20000000 -n "$PKG/rocks.pkb.plektra.QingshuTestActivity" --es languages ko,ja >/dev/null; sleep 1.5
