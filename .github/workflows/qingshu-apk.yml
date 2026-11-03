@@ -20,6 +20,9 @@ concurrency:
 env:
   # Release names: the pinyin branch publishes what the phone installs; other branches get -dev.
   REL_SUFFIX: ${{ github.ref != 'refs/heads/pinyin' && '-dev' || '' }}
+  # crates.io downloads sometimes fail with HTTP/2 framing errors on the runners.
+  CARGO_NET_RETRY: "10"
+  CARGO_HTTP_MULTIPLEXING: "false"
 
 jobs:
   build:
