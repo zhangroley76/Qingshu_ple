@@ -22,7 +22,7 @@ class JapaneseInputTest {
     }
 
     @Test fun pendingLettersStayPending() {
-        assertEquals("に" to "ho", RomajiKana.convert("niho"))
+        assertEquals("に" to "h", RomajiKana.convert("nih"))
         assertEquals("" to "ky", RomajiKana.convert("ky"))
         assertEquals("" to "n", RomajiKana.convert("n"))
     }
