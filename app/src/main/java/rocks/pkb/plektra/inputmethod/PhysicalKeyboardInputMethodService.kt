@@ -3486,7 +3486,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     private fun handlePinyinKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         if (!::pinyinController.isInitialized) return false
         if (pinyinController.active) {
-            Log.d(
+            Log.i(
                 TAG,
                 "Pinyin key ${KeyEvent.keyCodeToString(keyCode)} meta=0x${Integer.toHexString(event?.metaState ?: 0)} " +
                     "dev=${event?.deviceId} altPressed=$altPressed altPhys=$altPhysicallyPressed altLatch=$altLatchActive " +
@@ -4796,6 +4796,13 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         } else {
             profileRemapped
         }
+        // Qingshu: some keyboards report Fn as KEYCODE_FUNCTION, which Plektra ignores. Treat it as
+        // Ctrl so Nav Mode (Fn + E/S/D/F arrows) works with it; a Ctrl key passes through unchanged.
+        val fnAsCtrl = rocks.pkb.plektra.pinyin.FnAsCtrl.map(remapped.keyCode, remapped.event)
+        if (fnAsCtrl != null) {
+            Log.i(TAG, "Qingshu key: Fn as Ctrl ${KeyEvent.keyCodeToString(remapped.keyCode)} -> ${KeyEvent.keyCodeToString(fnAsCtrl.first)}")
+        }
+        val remappedFinal = fnAsCtrl?.let { remapped.copy(keyCode = it.first, event = it.second) } ?: remapped
         val isClicksPowerKeyboard = !dispatchingClicksAccessibilityKeyEvent &&
             (event
                 ?.takeIf { it.deviceId >= 0 }
@@ -4805,8 +4812,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
                             ?.let(DeviceSpecific::isClicksPowerKeyboard) == true
                 } == true)
         return clicksPowerButtonEventMapper.map(
-            keyCode = remapped.keyCode,
-            event = remapped.event,
+            keyCode = remappedFinal.keyCode,
+            event = remappedFinal.event,
             isClicksPowerKeyboard = isClicksPowerKeyboard,
             clicksButtonMode = SettingsManager.getClicksButtonMode(this),
             metaButtonMode = SettingsManager.getClicksMetaButtonMode(this),
@@ -4997,10 +5004,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             }
         }
         val remapped = remapHardwareEvent(keyCode_, event_)
-        if (::pinyinController.isInitialized && pinyinController.active) {
-            Log.d(
+        if ((::pinyinController.isInitialized && pinyinController.active) ||
+            rocks.pkb.plektra.pinyin.FnAsCtrl.isDiagnosticKey(keyCode_, event_)
+        ) {
+            Log.i(
                 TAG,
-                "Pinyin raw down ${KeyEvent.keyCodeToString(keyCode_)} -> ${KeyEvent.keyCodeToString(remapped.keyCode)} " +
+                "Qingshu raw down ${KeyEvent.keyCodeToString(keyCode_)} -> ${KeyEvent.keyCodeToString(remapped.keyCode)} " +
                     "meta 0x${Integer.toHexString(event_?.metaState ?: 0)} -> 0x${Integer.toHexString(remapped.event?.metaState ?: 0)} " +
                     "repeat=${event_?.repeatCount} scan=${event_?.scanCode}"
             )

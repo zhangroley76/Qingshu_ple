@@ -79,7 +79,7 @@ class PinyinController(
      */
     fun onKeyDown(keyCode: Int, event: KeyEvent?, mods: Modifiers): Boolean {
         val consumed = handleKey(keyCode, event, mods)
-        Log.d(
+        Log.i(
             TAG,
             "key=${KeyEvent.keyCodeToString(keyCode)} mods=$mods active=$active engine=${engine.state} " +
                 "consumed=$consumed preedit='${frame.preedit}' candidates=${frame.candidates.take(5)}"
