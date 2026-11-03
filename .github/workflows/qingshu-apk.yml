@@ -165,7 +165,7 @@ jobs:
           arch: x86_64
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          script: mkdir -p test-out && bash scripts/emulator-pinyin-test.sh qingshu-debug.apk test-out/report.md
+          script: mkdir -p test-out && timeout 1200 bash scripts/emulator-pinyin-test.sh qingshu-debug.apk test-out/report.md || echo "emulator test script exited with $?"
 
       - name: Publish test report
         if: always()

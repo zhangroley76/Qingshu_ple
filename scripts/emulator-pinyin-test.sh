@@ -13,10 +13,10 @@ IME="$PKG/rocks.pkb.plektra.inputmethod.PhysicalKeyboardInputMethodService"
 OUT="$(dirname "$REPORT")"
 
 log() { echo "### $*"; }
-key() { adb shell input keyevent "$@"; sleep 0.4; }
-combo() { adb shell input keycombination "$@"; sleep 0.6; }
-type_text() { adb shell input text "$1"; sleep 0.8; }
-field_text() { adb logcat -d -s QingshuTest:I | grep -o 'text=\[.*\]' | tail -1; }
+key() { timeout 30 adb shell input keyevent "$@"; sleep 0.4; }
+combo() { timeout 30 adb shell input keycombination "$@"; sleep 0.6; }
+type_text() { timeout 30 adb shell input text "$1"; sleep 0.8; }
+field_text() { timeout 30 adb logcat -d -s QingshuTest:I | grep -o 'text=\[.*\]' | tail -1; }
 
 checks=()
 check() { # name, expected substring of the field text
@@ -109,7 +109,7 @@ log "custom phrase: yx (added by the test activity) is offered; pick it"
 key KEYCODE_BACK
 type_text yx
 adb exec-out screencap -p > "$OUT/phrase.png"
-cands=$(adb logcat -d -s QingshuPinyin:I | grep "key=KEYCODE_X" | tail -1 | grep -o 'candidates=.*')
+cands=$(timeout 30 adb logcat -d -s QingshuPinyin:I | grep "key=KEYCODE_X" | tail -1 | grep -o 'candidates=.*')
 n=$(echo "$cands" | tr ',' '\n' | grep -n 'test@example.com' | head -1 | cut -d: -f1)
 if [ -n "$n" ]; then
   checks+=("PASS | phrase yx offered as candidate $n | $cands")
@@ -166,7 +166,7 @@ check "Backspace undoes the fix" "hello teh"
 log "learned Chinese words are saved (written when Chinese is switched off or the field closes)"
 key KEYCODE_HOME
 sleep 2
-learned=$(adb shell run-as $PKG sh -c 'cat files/qingjian/user/user.tsv 2>/dev/null | wc -l' | tr -d '\r ')
+learned=$(timeout 30 adb shell run-as $PKG sh -c 'cat files/qingjian/user/user.tsv 2>/dev/null | wc -l' | tr -d '\r ')
 if [ "${learned:-0}" -gt 0 ]; then
   checks+=("PASS | learned words saved | user.tsv has $learned lines")
 else
