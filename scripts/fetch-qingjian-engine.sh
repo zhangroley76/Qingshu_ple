@@ -37,15 +37,16 @@ if [[ -z "$APK" ]]; then
 fi
 
 mkdir -p "$WORK/x"
-FILES=(lib/arm64-v8a/libqingjian_android.so assets/data/dict.qj)
+# english.tsv: English words among pinyin candidates (中英混打, ~2 MB).
+FILES=(lib/arm64-v8a/libqingjian_android.so assets/data/dict.qj assets/data/english.tsv)
 [[ $WITH_LM -eq 1 ]] && FILES+=(assets/data/lm.qj)
 unzip -q -o "$APK" "${FILES[@]}" -d "$WORK/x"
 
 mkdir -p "$LIB_DIR" "$ASSET_DIR"
 install -m 644 "$WORK/x/lib/arm64-v8a/libqingjian_android.so" "$LIB_DIR/"
-rm -f "$ASSET_DIR"/*.qj
-install -m 644 "$WORK/x/assets/data/dict.qj" "$ASSET_DIR/"
+rm -f "$ASSET_DIR"/*.qj "$ASSET_DIR"/*.tsv
+install -m 644 "$WORK/x/assets/data/dict.qj" "$WORK/x/assets/data/english.tsv" "$ASSET_DIR/"
 [[ $WITH_LM -eq 1 ]] && install -m 644 "$WORK/x/assets/data/lm.qj" "$ASSET_DIR/"
 
 echo "Installed from Qingjian $VERSION:"
-(cd "$ROOT" && sha256sum "app/src/main/jniLibs/arm64-v8a/libqingjian_android.so" app/src/main/assets/qingjian/*.qj)
+(cd "$ROOT" && sha256sum "app/src/main/jniLibs/arm64-v8a/libqingjian_android.so" app/src/main/assets/qingjian/*.qj app/src/main/assets/qingjian/*.tsv)
