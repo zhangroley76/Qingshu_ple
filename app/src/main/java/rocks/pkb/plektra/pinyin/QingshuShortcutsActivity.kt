@@ -60,7 +60,7 @@ class QingshuShortcutsActivity : Activity() {
         val swapped = SettingsManager.getSwapShiftAlt(this)
         val alt = if (swapped) "Shift键" else "Alt"
         heading("中文")
-        row("Shift + 空格", "中英文切换")
+        row("Shift + 空格", "切换语言：EN / 中 / 한 / あ（后两个要在设置里开启）")
         row("空格", "上屏高亮候选 / 选联想")
         row("$alt + W E R", "选第 1 2 3 个候选")
         row("$alt + S D F", "选第 4 5 6 个")
@@ -70,6 +70,8 @@ class QingshuShortcutsActivity : Activity() {
         row("Back", "取消组字 / 关闭联想")
         row("$alt + 标点", "全角中文标点")
         row("SYM", "符号页（第一页中文标点）")
+        row("有联想时 $alt + 数字键", "选联想；没有对应的联想就直接打数字")
+        row("有联想时要打数字", "先按 Back，或用 $alt + 0，或连按两下 $alt 锁定数字")
         if (swapped) {
             column.addView(TextView(this).apply {
                 text = "已开启 Shift/Alt 对调：上面的「Shift键」是键盘上原本的 Alt 键。"
@@ -77,6 +79,11 @@ class QingshuShortcutsActivity : Activity() {
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             })
         }
+
+        heading("英文")
+        row("纠正后马上按退格", "还原成原来打的字（同一个字还原两次会记住）")
+        row("自动大写后按退格", "删掉后再打就是小写")
+        row("打字母前按一下 Shift", "取消这次自动大写")
 
         val holdNav = SettingsManager.getNavModeCtrlHoldEnabled(this)
         heading(if (holdNav) "按住 Fn" else "点一下 Fn（或连点两下锁定）")

@@ -152,8 +152,9 @@ class PinyinController(
             // With Alt locked for numbers, digits stay digits.
             val digit = if (mods.alt && !mods.altLocked) mods.altText?.singleOrNull() else null
             when {
-                digit != null && digit in '1'..'9' -> {
-                    associations.getOrNull(digit - '1')?.let { pickAssociation(it) }
+                // No association under that number: fall through, close them and type the digit.
+                digit != null && digit in '1'..'9' && digit - '1' < associations.size -> {
+                    pickAssociation(associations[digit - '1'])
                     return true
                 }
                 keyCode == KeyEvent.KEYCODE_SPACE && !mods.alt && !mods.shift -> {
