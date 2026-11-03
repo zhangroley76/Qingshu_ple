@@ -75,7 +75,7 @@ Update by installing over the old version; don't uninstall first, or your learne
 
 **Automatic updates**: add `https://github.com/zhangroley76/Qingshu_ple` to [Obtainium](https://github.com/ImranR98/Obtainium). It follows the numbered releases (`v26.09.N`).
 
-The app ID is `io.github.zhangroley76.qingshu`, so it installs next to Plektra. The APK is about 170 MB, mostly dictionaries and the language model.
+The app ID is `io.github.zhangroley76.qingshu`, so it installs next to Plektra. The APK is about 95 MB, mostly dictionaries and the language model.
 
 ## Status
 

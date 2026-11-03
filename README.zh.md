@@ -75,7 +75,7 @@
 
 **自动更新**：在 [Obtainium](https://github.com/ImranR98/Obtainium) 加入 `https://github.com/zhangroley76/Qingshu_ple`，它会追踪编号版本（`v26.09.N`）。
 
-App ID 是 `io.github.zhangroley76.qingshu`，可以和 Plektra 同时安装。APK 约 170 MB，主要是词库和语言模型。
+App ID 是 `io.github.zhangroley76.qingshu`，可以和 Plektra 同时安装。APK 约 95 MB，主要是词库和语言模型。
 
 ## 目前状态
 
