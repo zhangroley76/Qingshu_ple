@@ -4102,6 +4102,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         qsAltHeld = false
         qsShiftHeld = false
         qsModifierUsedForPinyin = false
+        rocks.pkb.plektra.pinyin.FnAsCtrl.reset()
         cancelSpeechRecognition()
         ++speechEditorSession
         disableSmoothCaretExperiment()

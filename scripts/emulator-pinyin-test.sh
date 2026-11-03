@@ -130,6 +130,11 @@ key KEYCODE_CTRL_LEFT
 key KEYCODE_S
 type_text z
 check "Fn tap + S is the left arrow" "abzc"
+
+log "Titan Fn (key code 403) held + S is the left arrow (test activity turns Ctrl-hold navigation on)"
+combo 403 KEYCODE_S
+type_text y
+check "Fn(403)+S moves left" "abzyc"
 adb exec-out screencap -p > "$OUT/final.png"
 
 adb logcat -d -v time > "$OUT/logcat.txt"
