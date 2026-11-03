@@ -156,3 +156,13 @@ Classification by Brian Kelk; see the SCOWL Copyright file for the full attribut
   [Tatoeba](https://tatoeba.org) by Tatoeba contributors, CC BY 2.0 FR, used by the keyboard
   simulation tests. They are held out of the word-pair counts.
 - `app/src/test/resources/simulation/chat_messages_en.txt`: messages written for Numen's tests.
+
+## SKK-JISYO.L (Japanese input)
+
+Qingshu's Japanese kana-to-kanji conversion uses SKK-JISYO.L from the SKK dictionary project
+(https://github.com/skk-dev/dict), Copyright (C) 1988-1995, 1997, 1999-2014 Masahiko Sato,
+Hironobu Takahashi, Masahiro Doteguchi, Miki Inooka, Yukiyoshi Kameyama, Akihiko Sasaki, Dai Ando,
+Junichi Okukawa, Katsushi Sato, Nobuhiro Yamagishi, NAKAJIMA Mikio, MITA Yuusuke and the SKK
+Development Team. It is free software under the GNU General Public License, version 2 or (at your
+option) any later version. The build converts it to UTF-8 and removes annotations
+(`scripts/fetch-japanese-dictionary.sh`).
