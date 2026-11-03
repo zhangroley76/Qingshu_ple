@@ -26,3 +26,5 @@
 
 # Keep BuildConfig for runtime checks if needed
 -keep class rocks.pkb.plektra.BuildConfig { *; }
+# Qingshu: the Qingjian engine's JNI symbols are named after this class and its methods.
+-keep class app.qingjian.inputmethod.core.Native { *; }

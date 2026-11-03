@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- QA build (release code and R8, debug key): only the emulator test host is added. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <activity
+            android:name=".QingshuTestActivity"
+            android:exported="true"
+            android:label="Qingshu test"
+            android:theme="@style/Theme.Plektra" />
+    </application>
+</manifest>

@@ -283,8 +283,21 @@ android {
             // Disable lint for release to avoid file lock issues
             isDebuggable = false
         }
+        // Qingshu: release code (R8 on) with the debug key and the emulator test host, so the
+        // emulator test checks what the release APK runs. Debuggable for run-as in the test.
+        create("qa") {
+            initWith(getByName("release"))
+            isDebuggable = true
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+        }
     }
     
+    sourceSets {
+        getByName("debug").java.srcDir("src/qingshuTest/java")
+        getByName("qa").java.srcDir("src/qingshuTest/java")
+    }
+
     // Validate signing config only when building release
     tasks.whenTaskAdded {
         if (!isFdroidBuild && (
