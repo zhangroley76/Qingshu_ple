@@ -17,8 +17,45 @@ object QingshuChineseSettings {
 
     private const val KEY_TRADITIONAL = "qingshu_traditional"
     private const val KEY_FUZZY = "qingshu_fuzzy"
+    private const val KEY_DOMAINS = "qingshu_domains"
+    private const val KEY_GENERAL_DICTIONARY = "qingshu_general_dictionary"
+    private const val KEY_CORNER_QUOTES = "qingshu_corner_quotes"
     private const val KEY_ENGLISH_IN_CHINESE = "qingshu_english_in_chinese"
     private const val KEY_CHINESE_FIRST = "qingshu_chinese_first"
+
+    /** Qingjian's bundled domain dictionaries (`dicts/<id>.qj`) with their labels. */
+    val DOMAINS = listOf(
+        "idioms" to "成语", "poetry_lines" to "诗词", "places" to "地名",
+        "historical_figures" to "历史人物", "it_computing" to "IT / 计算机", "medicine" to "医学",
+        "law" to "法律", "finance" to "财经", "food" to "饮食", "animals" to "动物", "automotive" to "汽车"
+    )
+
+    /** As in Qingjian: only idioms are on until the user picks more. */
+    fun domains(context: Context): Set<String> =
+        SettingsManager.getPreferences(context).getStringSet(KEY_DOMAINS, setOf("idioms")).orEmpty()
+
+    fun setDomains(context: Context, domains: Set<String>) {
+        SettingsManager.getPreferences(context).edit().putStringSet(KEY_DOMAINS, domains.toSet()).apply()
+        notifyChanged(context)
+    }
+
+    /** Qingjian's large general vocabulary (`dicts/general.qj`), on by default as in Qingjian. */
+    fun generalDictionary(context: Context): Boolean =
+        SettingsManager.getPreferences(context).getBoolean(KEY_GENERAL_DICTIONARY, true)
+
+    fun setGeneralDictionary(context: Context, on: Boolean) {
+        SettingsManager.getPreferences(context).edit().putBoolean(KEY_GENERAL_DICTIONARY, on).apply()
+        notifyChanged(context)
+    }
+
+    /** Quotation marks as 「」 and 『』 (Taiwan / Hong Kong style) instead of “” and ‘’. */
+    fun cornerQuotes(context: Context): Boolean =
+        SettingsManager.getPreferences(context).getBoolean(KEY_CORNER_QUOTES, false)
+
+    fun setCornerQuotes(context: Context, on: Boolean) {
+        SettingsManager.getPreferences(context).edit().putBoolean(KEY_CORNER_QUOTES, on).apply()
+        notifyChanged(context)
+    }
 
     /** Qingjian's fuzzy pinyin rules (`FuzzyRules::NAMES`) with their labels. */
     val FUZZY_RULES = listOf(
@@ -76,6 +113,8 @@ object QingshuChineseSettings {
             .put("english_in_chinese", englishInChinese(context))
             .put("chinese_first", chineseFirst(context))
             .put("traditional_variant", variant)
+            .put("domains", JSONArray(DOMAINS.map { it.first }.filter { it in domains(context) }))
+            .put("disabled_dictionaries", JSONArray(if (generalDictionary(context)) emptyList() else listOf("general")))
             .toString()
     }
 }

@@ -26,6 +26,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -160,6 +161,84 @@ private fun ChineseSettingsScreen(onBack: () -> Unit) {
                     Checkbox(checked = rule in fuzzy, onCheckedChange = null)
                     Text(label, modifier = Modifier.padding(start = 12.dp), fontFamily = FontFamily.Monospace)
                 }
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(top = 12.dp))
+            SectionTitle("词库")
+            var general by remember { mutableStateOf(QingshuChineseSettings.generalDictionary(context)) }
+            SwitchRow(
+                title = "通用大词库",
+                description = "青简的扩充词汇（约 68 MB），候选更多更全",
+                checked = general
+            ) {
+                general = it
+                QingshuChineseSettings.setGeneralDictionary(context, it)
+            }
+            Text(
+                "专业词库：勾选后这些领域的词会出现在候选里。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+            var domains by remember { mutableStateOf(QingshuChineseSettings.domains(context)) }
+            for ((id, label) in QingshuChineseSettings.DOMAINS) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .toggleable(
+                            value = id in domains,
+                            role = Role.Checkbox,
+                            onValueChange = { on ->
+                                domains = if (on) domains + id else domains - id
+                                QingshuChineseSettings.setDomains(context, domains)
+                            }
+                        )
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(checked = id in domains, onCheckedChange = null)
+                    Text(label, modifier = Modifier.padding(start = 12.dp))
+                }
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(top = 12.dp))
+            SectionTitle("标点")
+            var corner by remember { mutableStateOf(QingshuChineseSettings.cornerQuotes(context)) }
+            SwitchRow(
+                title = "引号用「」『』",
+                description = "中文模式打 \" 和 ' 时出直角引号（台湾、香港常用），自动配对开合",
+                checked = corner
+            ) {
+                corner = it
+                QingshuChineseSettings.setCornerQuotes(context, it)
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(top = 12.dp))
+            SectionTitle("打字统计")
+            var statsVersion by remember { mutableStateOf(0) }
+            val stats = remember(statsVersion) {
+                rocks.pkb.plektra.core.suggestions.TypingStats.summary(
+                    context.getSharedPreferences(rocks.pkb.plektra.core.suggestions.TypingStats.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+                )
+            }
+            val chinese = remember(statsVersion) { QingshuStats.chineseChars(context) }
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                Text("中文：打了 $chinese 个字", style = MaterialTheme.typography.bodyMedium)
+                Text("英文：打了 ${stats.words} 个字，自动纠错 ${stats.typosFixed} 次", style = MaterialTheme.typography.bodyMedium)
+                stats.wordsPerMinute?.let { Text("英文速度：每分钟约 $it 个字", style = MaterialTheme.typography.bodyMedium) }
+                stats.favoriteWord?.let { Text("最常打的英文字：$it", style = MaterialTheme.typography.bodyMedium) }
+                Text(
+                    "只记数量，不记你打的内容（最常打的英文字除外，只存在手机里）。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                TextButton(onClick = {
+                    rocks.pkb.plektra.core.suggestions.TypingStats.reset(
+                        context.getSharedPreferences(rocks.pkb.plektra.core.suggestions.TypingStats.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+                    )
+                    QingshuStats.reset(context)
+                    statsVersion++
+                }) { Text("清除统计") }
             }
 
             HorizontalDivider(modifier = Modifier.padding(top = 12.dp))

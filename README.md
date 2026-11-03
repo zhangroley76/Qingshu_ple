@@ -23,6 +23,9 @@ Qingshu 是 [Plektra](https://github.com/pkb-rocks/plektra)（Pastiera 的后续
 | 繁体输出 | 设置 → 中文 → 输出字形：台湾、香港或通用繁体字形（只换字形不换用语），候选与联想都跟着转 |
 | 中英混打 | 中文模式打 hello 这类英文，候选里也有英文单字，不用切换 |
 | 模糊音、简拼 | 九组模糊音可勾选（z = zh、n = l、an = ang…）；只打声母也行（nh → 你好） |
+| 专业词库 | 通用大词库与成语、诗词、地名、IT、医学等 11 个专业词库，可在设置里勾选 |
+| 直角引号 | 可选：中文模式的引号出「」『』，自动配对 |
+| 打字统计 | 中英文字数、自动纠错次数、英文速度（只记数量） |
 | 中文常用语 | 设置 → 中文 → 常用语：给常用语设代码，在中文模式打代码就出现在候选（例如 `yx` 出邮箱） |
 | 学习常用词 | 选过的词会越来越靠前，切换输入框或关掉中文时存档 |
 | 快捷键说明 | 在任何输入框打 `/?`，弹出所有快捷键（中文按键与当前的 Fn 对应） |
@@ -44,7 +47,7 @@ Plektra 原有的功能都还在，包括导航模式（Fn+E S D F 方向键）�
 
 更新时直接覆盖安装，不要先卸载，否则要重新启用输入法，学到的词也会不见。
 
-**自动更新**：用 [Obtainium](https://github.com/ImranR98/Obtainium) 加入 `https://github.com/zhangroley76/Qingshu_ple`，它会追踪最新的编号版本（`v26.09.N`），有新版就提示安装。App ID 是 `io.github.zhangroley76.qingshu`，可以和 Plektra 同时安装。APK 约 60 MB，主要是词库和语言模型。
+**自动更新**：用 [Obtainium](https://github.com/ImranR98/Obtainium) 加入 `https://github.com/zhangroley76/Qingshu_ple`，它会追踪最新的编号版本（`v26.09.N`），有新版就提示安装。App ID 是 `io.github.zhangroley76.qingshu`，可以和 Plektra 同时安装。APK 约 140 MB，主要是词库和语言模型。
 
 ## 当前状态
 

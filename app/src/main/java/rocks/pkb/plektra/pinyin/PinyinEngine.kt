@@ -118,15 +118,27 @@ class PinyinEngine(context: Context) {
         check(DICTIONARY in names) { "assets/$ASSET_DIR/$DICTIONARY missing — run scripts/fetch-qingjian-engine.sh" }
         dataDir.deleteRecursively()
         dataDir.mkdirs()
-        for (name in names) {
-            val target = File(dataDir, name)
-            val partial = File(dataDir, "$name.part")
-            appContext.assets.open("$ASSET_DIR/$name").use { input ->
+        copyAssets(ASSET_DIR, dataDir)
+        stampFile.writeText(stamp)
+    }
+
+    /** Copies an asset folder recursively (domain dictionaries live in `dicts/`). */
+    private fun copyAssets(assetPath: String, target: File) {
+        target.mkdirs()
+        for (name in appContext.assets.list(assetPath).orEmpty()) {
+            val child = "$assetPath/$name"
+            val children = appContext.assets.list(child).orEmpty()
+            if (children.isNotEmpty()) {
+                copyAssets(child, File(target, name))
+                continue
+            }
+            val file = File(target, name)
+            val partial = File(target, "$name.part")
+            appContext.assets.open(child).use { input ->
                 partial.outputStream().use { output -> input.copyTo(output, 1 shl 16) }
             }
-            check(partial.renameTo(target)) { "could not write $target" }
+            check(partial.renameTo(file)) { "could not write $file" }
         }
-        stampFile.writeText(stamp)
     }
 
     private inline fun call(block: (Long) -> String?): PinyinFrame? {

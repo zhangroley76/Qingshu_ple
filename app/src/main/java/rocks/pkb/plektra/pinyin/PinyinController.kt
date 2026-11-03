@@ -140,7 +140,7 @@ class PinyinController(
             val typed = event?.unicodeChar?.takeIf { it != 0 }?.toChar()
             commitHighlighted()
             if (typed != null && isAsciiPunctuation(typed)) {
-                commitText(engine.punctuate(typed))
+                commitText(punctuate(typed))
                 return true
             }
             return false
@@ -172,7 +172,7 @@ class PinyinController(
             if (text != null && text.length == 1 && isAsciiPunctuation(text[0])) {
                 // Keep "3.14", "1,000" and "10:30" half-width after a digit.
                 if (text[0] in ".,:" && previousCharIsDigit()) return false
-                commitText(engine.punctuate(text[0]))
+                commitText(punctuate(text[0]))
                 return true
             }
             return false
@@ -184,7 +184,7 @@ class PinyinController(
         }
         val typed = event?.unicodeChar?.takeIf { it != 0 }?.toChar()
         if (typed != null && keyCode != KeyEvent.KEYCODE_SPACE && isAsciiPunctuation(typed)) {
-            commitText(engine.punctuate(typed))
+            commitText(punctuate(typed))
             return true
         }
         return false
@@ -203,7 +203,7 @@ class PinyinController(
             c == '\'' -> return apply(engine.push('\''))
             isAsciiPunctuation(c) -> {
                 commitHighlighted()
-                commitText(engine.punctuate(c))
+                commitText(punctuate(c))
                 return true
             }
             else -> {
@@ -406,6 +406,7 @@ class PinyinController(
         // The engine only saves what it learned on reset; without this, learned words were lost
         // whenever the process ended (learned=0 on every start).
         engine.flushLearning()
+        QingshuStats.save(appContext)
         publishBar()
     }
 
@@ -430,7 +431,10 @@ class PinyinController(
         if (ic != null) {
             ic.beginBatchEdit()
             if (next.replace > 0 && next.commit.isNotEmpty()) ic.deleteSurroundingText(next.replace, 0)
-            if (next.commit.isNotEmpty()) ic.commitText(next.commit, 1)
+            if (next.commit.isNotEmpty()) {
+                ic.commitText(next.commit, 1)
+                QingshuStats.onChineseCommitted(appContext, next.commit)
+            }
             if (next.preedit.isNotEmpty()) {
                 ic.setComposingText(next.preedit, 1)
             } else if (frame.isComposing && next.commit.isEmpty()) {
@@ -446,6 +450,21 @@ class PinyinController(
         associations = emptyList()
         if (committedAndDone) showAssociations() else publishBar()
         return true
+    }
+
+    /** Full-width punctuation; quotes become 「」『』 when that option is on, paired by what's before the cursor. */
+    private fun punctuate(c: Char): String {
+        if ((c == '"' || c == '\'') && QingshuChineseSettings.cornerQuotes(appContext)) {
+            val (open, close) = if (c == '"') '「' to '」' else '『' to '』'
+            val before = try {
+                inputConnection()?.getTextBeforeCursor(QUOTE_LOOKBACK, 0)?.toString().orEmpty()
+            } catch (_: Exception) {
+                ""
+            }
+            val unclosed = before.lastIndexOf(open) > before.lastIndexOf(close)
+            return (if (unclosed) close else open).toString()
+        }
+        return engine.punctuate(c)
     }
 
     private fun commitText(text: String) {
@@ -482,6 +501,7 @@ class PinyinController(
 
         /** Selection updates this soon after our own edit are its echo, not a cursor move. */
         private const val OWN_EDIT_WINDOW_MS = 250L
+        private const val QUOTE_LOOKBACK = 400
 
         /** Characters before the cursor used to find the previous word for association. */
         private const val ASSOCIATION_CONTEXT = 16

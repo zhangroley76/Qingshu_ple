@@ -153,6 +153,21 @@ expect_cand "fuzzy z=zh: zongwen -> 中文" KEYCODE_N "中文"
 key KEYCODE_BACK
 timeout 30 adb shell am start -f 0x20000000 -n "$PKG/rocks.pkb.plektra.QingshuTestActivity" --es fuzzy none >/dev/null; sleep 1.5
 
+log "domain dictionaries mounted (general + idioms by default)"
+mounted=$(timeout 30 adb logcat -d | grep '附加词库已挂上' | tail -1)
+if [[ "$mounted" == *"count=2"* ]]; then checks+=("PASS | general + idioms dictionaries mounted | $mounted"); else checks+=("FAIL | general + idioms dictionaries mounted | $mounted"); fi
+
+log "corner quotes 「」 when enabled"
+timeout 30 adb shell am start -f 0x20000000 -n "$PKG/rocks.pkb.plektra.QingshuTestActivity" --es corner on >/dev/null; sleep 1.5
+key KEYCODE_BACK
+timeout 30 adb shell input text "'\"'"
+type_text ni
+key KEYCODE_SPACE
+timeout 30 adb shell input text "'\"'"
+check "corner quotes pair 「你」" "「你」"
+timeout 30 adb shell am start -f 0x20000000 -n "$PKG/rocks.pkb.plektra.QingshuTestActivity" --es corner off >/dev/null; sleep 1.5
+key KEYCODE_BACK
+
 log "zhongwen + Enter commits letters"
 type_text zhongwen
 key KEYCODE_ENTER
