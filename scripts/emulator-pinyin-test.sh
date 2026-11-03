@@ -135,6 +135,17 @@ log "Titan Fn (key code 403) held + S is the left arrow (test activity turns Ctr
 combo 403 KEYCODE_S
 type_text y
 check "Fn(403)+S moves left" "abzyc"
+
+log "English autocorrect (Numen): helo -> hello, teh -> the, Backspace undoes"
+key KEYCODE_MOVE_END
+type_text "%shelo"
+key KEYCODE_SPACE
+check "autocorrect helo -> hello" "hello "
+type_text "teh"
+key KEYCODE_SPACE
+check "autocorrect teh -> the" "hello the "
+key KEYCODE_DEL
+check "Backspace undoes the fix" "hello teh"
 adb exec-out screencap -p > "$OUT/final.png"
 
 adb logcat -d -v time > "$OUT/logcat.txt"

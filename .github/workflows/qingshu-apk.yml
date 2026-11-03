@@ -6,15 +6,20 @@ name: Qingshu APK
 
 on:
   push:
-    branches: [pinyin]
+    # autocorrect: work in progress; built and tested, but its APK and report get "-dev" names.
+    branches: [pinyin, autocorrect]
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: qingshu-apk
+  group: qingshu-apk-${{ github.ref }}
   cancel-in-progress: true
+
+env:
+  # Release names: the pinyin branch publishes what the phone installs; other branches get -dev.
+  REL_SUFFIX: ${{ github.ref != 'refs/heads/pinyin' && '-dev' || '' }}
 
 jobs:
   build:
@@ -60,9 +65,9 @@ jobs:
         run: |
           apk=$(ls app/build/outputs/apk/stable/debug/*.apk | head -1)
           cp "$apk" qingshu-debug.apk
-          gh release delete qingshu-build-failed --yes --cleanup-tag 2>/dev/null || true
-          gh release delete qingshu-latest --yes --cleanup-tag 2>/dev/null || true
-          gh release create qingshu-latest qingshu-debug.apk \
+          gh release delete qingshu-build-failed$REL_SUFFIX --yes --cleanup-tag 2>/dev/null || true
+          gh release delete qingshu-latest$REL_SUFFIX --yes --cleanup-tag 2>/dev/null || true
+          gh release create qingshu-latest$REL_SUFFIX qingshu-debug.apk \
             --prerelease --target "$GITHUB_SHA" \
             --title "Qingshu debug build ${GITHUB_SHA::7}" \
             --notes "Debug APK built from ${GITHUB_SHA} on $(date -u +%Y-%m-%dT%H:%MZ)."
@@ -91,8 +96,8 @@ jobs:
             [ -f build.log ] && tail -n 80 build.log | head -c 20000
             echo '```'
           } > notes.md
-          gh release delete qingshu-build-failed --yes --cleanup-tag 2>/dev/null || true
-          gh release create qingshu-build-failed --prerelease --target "$GITHUB_SHA" \
+          gh release delete qingshu-build-failed$REL_SUFFIX --yes --cleanup-tag 2>/dev/null || true
+          gh release create qingshu-build-failed$REL_SUFFIX --prerelease --target "$GITHUB_SHA" \
             --title "Qingshu build failed ${GITHUB_SHA::7}" --notes-file notes.md
 
   # Types pinyin on an emulator with injected key events (scripts/emulator-pinyin-test.sh) and
@@ -155,7 +160,7 @@ jobs:
           mkdir -p test-out
           [ -f test-out/report.md ] || echo "Emulator test produced no report (see the workflow log)." > test-out/report.md
           head -c 120000 test-out/report.md > notes.md
-          gh release delete qingshu-emulator-test --yes --cleanup-tag 2>/dev/null || true
+          gh release delete qingshu-emulator-test$REL_SUFFIX --yes --cleanup-tag 2>/dev/null || true
           files=$(ls test-out/*.png test-out/logcat.txt 2>/dev/null || true)
-          gh release create qingshu-emulator-test $files --prerelease --target "$GITHUB_SHA" \
+          gh release create qingshu-emulator-test$REL_SUFFIX $files --prerelease --target "$GITHUB_SHA" \
             --title "Qingshu emulator test ${GITHUB_SHA::7}" --notes-file notes.md
