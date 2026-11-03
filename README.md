@@ -1,224 +1,69 @@
-<p align="center"><img src="docs/branding/plektra-open-color.svg" alt="Plektra" width="160"></p>
+# 青书 Qingshu
 
-# Plektra
+**为 Unihertz Titan 2 实体键盘打造的中文拼音输入法**
 
-**Advanced (hardware) keyboard control on Android**
+Qingshu 是 [Plektra](https://github.com/pkb-rocks/plektra)（Pastiera 的后续项目）的分支。它保留 Plektra 完整的实体键盘功能，例如修饰键、SYM 符号页、导航模式和文字片段；在此基础上，加入了用实体键盘就能流畅选字的中文拼音输入。拼音引擎来自 [青简 Qingjian](https://github.com/qingjian-team/qingjian)，词库与语言模型全部离线运作。
 
-Free software under [GPLv3](LICENSE), with source code you can inspect, modify and share.
+*English: Qingshu is a fork of Plektra that adds offline Chinese pinyin input, designed for physical-keyboard phones such as the Unihertz Titan 2. The pinyin engine is Qingjian.*
 
-Plektra grew out of Pastiera, created by Andrea Palumbo (PalSoftware). Patrick Zauner took over maintenance of Pastiera and later continued the project as Plektra.
+[下载 APK](https://github.com/zhangroley76/Qingshu_ple/releases/download/qingshu-latest/qingshu-debug.apk) · [完整按键说明](QINGSHU.md) · [模拟器测试结果](https://github.com/zhangroley76/Qingshu_ple/releases/tag/qingshu-emulator-test)
 
-[Product page](https://pkb.rocks/) · [Releases](https://github.com/pkb-rocks/plektra/releases) · [Installation guide](docs/getting-started.md)
+## 为什么做这个
 
-<a href="https://opencollective.com/plektra"><img src="docs/branding/opencollective-button.png" alt="Support Plektra on Open Collective" width="298" height="48"></a>
+在实体键盘手机上，常见的中文输入法（例如 fcitx 的 Android 版）通常只能用空格上屏第一个候选，选其他字就得伸手去点屏幕。Qingshu 让选字、翻页、联想都能在键盘上完成，手不用离开按键。
 
-## Special thanks to Clicks Technology
+## 功能
 
-We thank [Clicks Technology](https://clicks.tech) for their foundational support. Their support enables us to bring Plektra to more devices and sustain its development over the long term.
-
-Our ambition is to make Plektra **the** keyboard app for power users.
-
-## Contents
-
-[Highlights](#highlights) · [Keys and bar](#keys-and-bar) · [Text and tools](#text-and-tools) · [Look and layout](#look-and-layout) · [Download and install](#download-and-install) · [Devices](#devices) · [Build and contribute](#build-and-contribute)
-
-## Highlights
-
-| Feature | Controls and tools |
+| 功能 | 说明 |
 | --- | --- |
-| [Customizable Toolbar](#modular-toolbar-configuration) | Suggestions, character variations and menu buttons; separate Normal and Slim profiles; shared or stacked rows |
-| [Hardware Key Remapping](#keys-and-bar) | Physical layouts, modifiers, SYM pages, navigation shortcuts, app shortcuts and command mappings |
-| [Smart Text Suggestions](#predictive-text-and-completions) | Dictionaries, word completions, autocorrection and locally learned next words |
-| [Snippets & Clipboard](#expandable-text-snippets--templates) | Text expansion from a short prefix, reusable snippets and clipboard history |
-| [Themes & Layouts](#nine-built-in-interface-themes) | Nine keyboard bar themes, high contrast, QWERTY, AZERTY and QWERTZ, plus importable layouts |
+| 中英文切换 | Shift+空格，或点键盘栏的语言按钮（中文时显示「中」） |
+| 键盘选字 | Alt + W E R / S D F / X C V 选第 1–9 个候选，对应 Titan 键盘上的数字位置；空格上屏高亮的候选 |
+| 连续选字 | 可以只选一段，剩下的拼音继续组字；按住 Alt 能连续选，不会进入长按符号层 |
+| 翻页与高亮 | Alt+P 翻页（翻到最后一页回第一页）；方向键或在键盘栏左右滑可移动高亮；点 ‹ › 翻页 |
+| 离线联想 | 上屏后显示常接在后面的词，用空格、Alt+数字或点选接下去 |
+| 中文标点 | Alt+标点输入全角标点（数字后的 . , : 保持半角）；SYM 第一页是中文标点 |
+| Shift/Alt 对调 | Titan 的 Alt 位置不好按数字，可以在设置 → Keyboard → Modifiers 对调 |
+| 不干扰英文 | 中文模式下首字母不会被自动大写；密码、网址、电邮栏位不走拼音；英文模式维持 Plektra 原本的行为 |
+| 调试报告 | 从 App 内分享报告时附上按键日志，方便回报问题 |
 
-![Plektra on Titan 2, Titan 2 Elite and Pixel 7a](docs/showcase/exports/stable/visuals/01-devices.png)
+Plektra 原有的功能都还在，包括导航模式（Fn+E S D F 方向键）、SYM 符号页、剪贴板历史、文字展开和键盘栏主题。详见 [Plektra 的说明](https://github.com/pkb-rocks/plektra)。
 
-## Keys and bar
+## 安装
 
-### Modular toolbar configuration
+1. 下载 [qingshu-debug.apk](https://github.com/zhangroley76/Qingshu_ple/releases/download/qingshu-latest/qingshu-debug.apk) 并安装。
+2. 在系统设置里启用「青书 Qingshu」输入法，并设为当前输入法。
+3. 打字时按 Shift+空格切换到中文。
 
-Configure suggestions, character variations and menu buttons independently.
+更新时直接覆盖安装，不要先卸载，否则要重新启用输入法。App ID 是 `io.github.zhangroley76.qingshu`，可以和 Plektra 同时安装。APK 约 60 MB，主要是词库和语言模型。
 
-![Titan 2 Elite with the keyboard bar showing suggestions and menu buttons](docs/showcase/exports/stable/visuals/02-keyboard-bar.png)
+## 当前状态
 
-### Adjustable interface density
+这是测试版，用 debug 签名发布。
 
-Choose a full bar, compact controls, a modifier LED strip or a hidden bar.
+- 中文切换、空格选字、Shift/Alt 对调、候选栏已经在 Titan 2 Elite 实机上确认。
+- 每次推送都会用 GitHub Actions 编译，并在 Android 模拟器上跑自动化按键测试，覆盖组字、选字、联想、翻页和标点。
+- 点选候选、SYM 中文标点、键盘表面滑动这几项还要在实机上确认。
 
-![Four bar configurations: full bar, suggestions, LED strip and hidden](docs/showcase/exports/stable/visuals/03-bar-configurations.png)
+**计划中**：移植 [Numen](https://github.com/jlo-aug/numen) 的英文自动纠错。
 
-### Dual profiles: Normal and Slim
+## 编译
 
-Configure Normal and Slim independently, then switch between the two profiles.
+每次推送 `pinyin` 分支，GitHub Actions 会自动编译，并把 APK 发布到 Releases 的 `qingshu-latest`。
 
-![Normal and Slim keyboard bar profiles compared](docs/showcase/exports/stable/visuals/04-slim-profile.png)
-
-### Flexible toolbar layouts
-
-Place suggestions and actions in a shared row or arrange them in stacked rows.
-
-![Stacked bar and shared row compared](docs/showcase/exports/stable/visuals/05-shared-row.png)
-
-### Live modifier state indicators
-
-See active and locked modifiers in the keyboard bar or Android status bar.
-
-![Keyboard bar showing an active and a locked modifier](docs/showcase/exports/stable/visuals/14-modifiers.png)
-
-### Ortholinear and staggered key geometries
-
-Choose ortholinear or staggered rows for the software keyboard.
-
-![Software keyboard with ortholinear and staggered key arrangements](docs/showcase/exports/stable/visuals/20-key-arrangement.png)
-
-## Text and tools
-
-### Predictive text and completions
-
-Complete words from suggestions as you type. Dictionaries and locally learned next words are supported.
-
-![Word suggestions for a partly typed word](docs/showcase/exports/stable/visuals/06-suggestions.png)
-
-### Contextual character variations
-
-Select accented letters and symbols from the variations for the current character.
-
-![Character variations for the last typed key in the bar](docs/showcase/exports/stable/visuals/07-variations.png)
-
-### Long-press secondary characters
-
-Long-press a software key to select its secondary characters.
-
-![Long-press popup with alternate characters on the software keyboard](docs/showcase/exports/stable/visuals/19-key-popup.png)
-
-### Expandable text snippets & templates
-
-Save reusable text such as addresses, email addresses and dates. Find snippets with a short prefix.
-
-![Saved snippets for an address, an email and a date](docs/showcase/exports/stable/visuals/08-snippet-selection.png)
-
-### Text shortcut expansion
-
-Expand a snippet shortcut into its saved text.
-
-![A snippet shortcut before and after expansion](docs/showcase/exports/stable/visuals/09-snippet-result.png)
-
-### Direct SYM layer mapping
-
-Open SYM pages and enter symbols using the corresponding physical keys.
-
-![SYM page with symbols mapped to the physical keys](docs/showcase/exports/stable/visuals/10-symbols.png)
-
-### Integrated, low-profile emoji picker
-
-Browse and insert emoji from the keyboard.
-
-![Emoji picker below a conversation](docs/showcase/exports/stable/visuals/11-emoji.png)
-
-### Integrated clipboard manager
-
-Browse clipboard history and insert a saved entry.
-
-![Clipboard history with copied entries](docs/showcase/exports/stable/visuals/12-clipboard.png)
-
-### Keyboard text selection
-
-Select text using physical keyboard controls.
-
-![Text selected with keyboard controls](docs/showcase/exports/stable/visuals/13-selection.png)
-
-### Terminal-style Ctrl navigation and selection
-
-Use Ctrl shortcuts to move the cursor, select text, copy and paste.
-
-![Ctrl layer with navigation and editing actions on the keys](docs/showcase/exports/stable/visuals/21-ctrl-navigation.png)
-
-## Look and layout
-
-### Nine built-in interface themes
-
-Choose from nine built-in keyboard bar themes.
-
-![Nine native keyboard bar themes with both modifier LED rails](docs/showcase/exports/stable/visuals/15-hardware-themes.png)
-
-### Standalone software keyboard mode
-
-Use the software keyboard on phones without physical keys, with suggestions, symbols and snippets.
-
-![Cloud Tap and Volcanic Dusk software keyboards shown separately on Pixel 7a](docs/showcase/exports/stable/visuals/16-software-keyboard.png)
-
-### Native QWERTY, AZERTY, and QWERTZ support
-
-Select QWERTY, AZERTY or QWERTZ, including German umlauts.
-
-![QWERTY, AZERTY and QWERTZ layouts](docs/showcase/exports/stable/visuals/17-layouts.png)
-
-### High-contrast mode for improved visibility
-
-Use a high-contrast theme with clear key outlines and distinct modifier indicators.
-
-![High-contrast theme on a Titan 2 Elite and a Pixel 7a](docs/showcase/exports/stable/visuals/18-high-contrast.png)
-
-Explore the complete [21-image device showcase](docs/showcase/README.md), with Stable and Nightly galleries. See [Features](docs/features.md) for voice input, local notes, backup and accessibility options.
-
-## Download and install
-
-| Channel | Purpose | Download |
-| --- | --- | --- |
-| Plektra Stable | Release for everyday use | [Stable releases](https://github.com/pkb-rocks/plektra/releases/latest) |
-| Plektra Nightly | Development builds with the newest features; can contain bugs and incomplete features | [Nightly releases](https://github.com/pkb-rocks/plektra/releases) |
-
-The first Stable release is planned for **26.10**. Until then, Nightly is the newest build. Versions use CalVer: `26.10` means October 2026; `26.10-nightly.DD.HHmmssZ` adds the UTC build day and time. APKs, release notes and checksums are available on GitHub Releases.
-
-Stable and Nightly are separate apps with their own settings. Install both and select the active keyboard in Android’s keyboard settings. Use Stable as your everyday keyboard and switch to Nightly to try new features; switch back to Stable if a Nightly build gets in your way.
-
-The full APK includes the Clicks accessibility service for launcher-button remapping. The APK without that service retains every other keyboard feature, including TalkBack support. The two variants replace each other within the same channel.
-
-Download the `-full.apk` or `-no-accessibility.apk` asset from the selected [GitHub release](https://github.com/pkb-rocks/plektra/releases). Its release notes and `SHA256SUMS` are listed on the same page.
-
-Additional distribution channels:
-
-- [Our F-Droid Nightly repository](https://pkb.rocks/fdroid/nightly/repo) — Available soon
-- [F-Droid main repository](https://f-droid.org/packages/rocks.pkb.plektra/) — Available soon
-- [Google Play](https://play.google.com/store/apps/details?id=rocks.pkb.plektra.unsovereign) — Available soon
-- [Add to Obtainium](https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22rocks.pkb.plektra.nightly%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fpkb-rocks%2Fplektra%2Freleases%22%2C%22author%22%3A%22pkb-rocks%22%2C%22name%22%3A%22Plektra%20Nightly%22%2C%22additionalSettings%22%3A%22%7B%5C%22includePrereleases%5C%22%3Atrue%2C%5C%22filterReleaseTitlesByRegEx%5C%22%3A%5C%22nightly%5C%22%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22-full%5C%5C%5C%5C.apk%24%5C%22%7D%22%7D) — Nightly updates from GitHub releases
-
-The canonical Stable and Nightly APKs use separate published hardware-backed signing keys. Planned Google Play variants use separate app identities. See [Getting started](docs/getting-started.md) and [all releases](https://github.com/pkb-rocks/plektra/releases).
-
-## Devices
-
-| Device | Support |
-| --- | --- |
-| Unihertz Titan 2 | Developed and release-tested; device-specific physical keyboard layouts and display geometry |
-| Unihertz Titan 2 Elite | Developed and release-tested; device-specific physical keyboard layouts and display geometry |
-| Google Pixel 7a + Clicks Power Keyboard | Directly tested physical keyboard combination |
-| Samsung Galaxy Z Fold6 | Directly tested software keyboard and folding behaviour; also used with Clicks Power Keyboard |
-
-Community-supported devices include the BlackBerry KEY2, Minimal Phone MP01 and BlackBerry Q25 (Zinwa mod), alongside other Clicks keyboard models. These are a selection of tested devices; further improvements for foldables are planned. See the [device support ranking](docs/devices.md) and [hardware notes](docs/device-support/).
-
-## Moving from Pastiera
-
-Import a Pastiera backup ZIP in Plektra’s Advanced settings. Plektra keeps its own app identity. An assisted migration flow is planned before the first Stable release. See [Migration from Pastiera](docs/migration-from-pastiera.md).
-
-## Build and contribute
-
-Build a Nightly debug APK with JDK 17 and the Android SDK for compile SDK 36:
+本地编译需要 JDK 17 以上和 Android SDK（platform 36）：
 
 ```sh
-git clone https://github.com/pkb-rocks/plektra.git
-cd plektra
-scripts/build-nightly-debug.sh 26.10
+scripts/fetch-qingjian-engine.sh --with-lm   # 下载青简 v0.3.2 的词库与语言模型
+ANDROID_NDK_HOME=/path/to/ndk scripts/build-qingjian-engine.sh arm64-v8a   # 从源码编译引擎（含联想）
+./gradlew assembleStableDebug
 ```
 
-To build and install on a connected device, add `--install --device <serial>`. Project structure and checks are in [Development](docs/development.md); maintainers use [Releasing](docs/releasing.md).
+Qingshu 对青简源码的修改放在 [`third_party/qingjian/`](third_party/qingjian/)，主要是离线联想的部分。更多说明见 [QINGSHU.md](QINGSHU.md)。
 
-Distributed forks must use their own name, application ID, update endpoints and branding, and must not present themselves as official Plektra releases.
+## 致谢与授权
 
-## Project links
+- [Plektra](https://github.com/pkb-rocks/plektra)：Patrick Zauner；前身是 Andrea Palumbo（PalSoftware）开发的 Pastiera
+- [青简 Qingjian](https://github.com/qingjian-team/qingjian)：拼音引擎、词库与语言模型
+- [Numen](https://github.com/jlo-aug/numen)：英文纠错的参考来源（计划中）
 
-- [Product page](https://pkb.rocks/)
-- [GitHub](https://github.com/pkb-rocks/plektra)
-- [Open Collective](https://opencollective.com/plektra)
-- [Security policy](SECURITY.md)
-- [Imprint](https://pzauner.de/Notes/.hidden/Impressum.pdf)
+Plektra 和青简都使用 GPL-3.0 授权（青简是 GPL-3.0-or-later），Qingshu 同样以 [GPL-3.0](LICENSE) 发布。Qingshu 不是 Plektra 或青简的官方版本，请不要把这里的问题回报给上游项目。
