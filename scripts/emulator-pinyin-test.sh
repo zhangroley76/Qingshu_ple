@@ -165,7 +165,8 @@ check "Backspace undoes the fix" "hello teh"
 
 log "shortcut help: typing /? removes it and opens the help window"
 help_open() { timeout 30 adb shell dumpsys activity activities | grep -q 'QingshuShortcutsActivity'; }
-type_text "/?"
+# Quoted for the device shell, where a bare ? is a glob.
+timeout 30 adb shell input text "'/?'"
 sleep 1.5
 if help_open; then checks+=("PASS | /? opens shortcut help | "); else checks+=("FAIL | /? opens shortcut help | not on screen"); fi
 adb exec-out screencap -p > "$OUT/help.png"
@@ -176,9 +177,9 @@ sleep 1
 log "learned Chinese words are saved (written when Chinese is switched off or the field closes)"
 key KEYCODE_HOME
 sleep 2
-learned=$(timeout 30 adb shell run-as $PKG sh -c 'cat files/qingjian/user/user.tsv 2>/dev/null | wc -l' | tr -d '\r ')
+learned=$(timeout 30 adb shell run-as $PKG stat -c %s files/qingjian/user/user.tsv 2>/dev/null | tr -d '\r ')
 if [ "${learned:-0}" -gt 0 ]; then
-  checks+=("PASS | learned words saved | user.tsv has $learned lines")
+  checks+=("PASS | learned words saved | user.tsv is $learned bytes")
 else
   checks+=("FAIL | learned words saved | user.tsv missing or empty: $(adb shell run-as $PKG ls -la files/qingjian/user 2>&1 | tr '\n' ' ')")
 fi
