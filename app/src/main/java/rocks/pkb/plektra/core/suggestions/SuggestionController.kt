@@ -117,7 +117,10 @@ class SuggestionController(
             knownWordProvider = { word -> isKnownWordInActiveDictionaries(word) },
             exactReplacementProvider = { word, boundaryChar ->
                 val boundary = boundaryChar ?: ' '
-                AutoCorrector.processText(word + boundary)?.takeIf { (original, replacement) ->
+                // Plektra's AutoCorrector is per language: ask for this keyboard's language, with the
+                // user's own entries. Dictionary words are replaced too ("ill" -> "I'll").
+                AutoCorrector.processText(word + boundary, locale = currentLocale.language, context = appContext)
+                    ?.takeIf { (original, replacement) ->
                     original == word && replacement != word
                 }?.second
             },
