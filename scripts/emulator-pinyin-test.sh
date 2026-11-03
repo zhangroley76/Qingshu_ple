@@ -163,6 +163,21 @@ check "autocorrect teh -> the" "hello the "
 key KEYCODE_DEL
 check "Backspace undoes the fix" "hello teh"
 
+log "shortcut help: typing /? removes it and opens the help window; Fn+G too"
+help_open() { timeout 30 adb shell dumpsys activity activities | grep -q 'QingshuShortcutsActivity'; }
+type_text "/?"
+sleep 1.5
+if help_open; then checks+=("PASS | /? opens shortcut help | "); else checks+=("FAIL | /? opens shortcut help | not on screen"); fi
+adb exec-out screencap -p > "$OUT/help.png"
+check_absent "/? removed from the text" "/?"
+key KEYCODE_ESCAPE
+sleep 1.5
+combo 403 KEYCODE_G
+sleep 1.5
+if help_open; then checks+=("PASS | Fn+G opens shortcut help | "); else checks+=("FAIL | Fn+G opens shortcut help | not on screen"); fi
+key KEYCODE_ESCAPE
+sleep 1
+
 log "learned Chinese words are saved (written when Chinese is switched off or the field closes)"
 key KEYCODE_HOME
 sleep 2
