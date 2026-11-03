@@ -1,0 +1,39 @@
+name: Qingshu dev check
+
+# Fast compile check for work-in-progress branches: Kotlin compile of the app (no native engine
+# or emulator) and, optionally, the suggestion unit tests.
+
+on:
+  push:
+    branches: [autocorrect]
+  workflow_dispatch:
+
+concurrency:
+  group: qingshu-dev-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - name: Compile
+        run: |
+          chmod +x ./gradlew
+          set -o pipefail
+          ./gradlew compileStableDebugKotlin --continue 2>&1 | tee compile.log
+      - name: Unit tests (suggestions)
+        if: success()
+        run: |
+          set -o pipefail
+          ./gradlew testStableDebugUnitTest --tests 'rocks.pkb.plektra.core.suggestions.*' --continue 2>&1 | tee test.log
+      - name: Errors
+        if: failure()
+        run: |
+          [ -f compile.log ] && grep -E '^e: ' compile.log | sed 's#file:///home/runner/work/Qingshu_ple/Qingshu_ple/##' | head -300
+          [ -f test.log ] && grep -E 'FAILED|^e: |tests completed' test.log | head -200
