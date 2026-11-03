@@ -76,7 +76,7 @@ class PinyinEngine(context: Context) {
 
     private fun load(): Pair<Long, Long> {
         val dataDir = File(appContext.filesDir, "qingjian/data")
-        val userDir = File(appContext.filesDir, "qingjian/user")
+        val userDir = userDir(appContext)
         userDir.mkdirs()
         extractBundledData(dataDir)
         val created = try {
@@ -156,6 +156,29 @@ class PinyinEngine(context: Context) {
         }
     }
 
+    /**
+     * Writes what the engine learned (the words you picked) to the user directory. The engine only
+     * saves on reset, so call this when the field or the keyboard goes away.
+     */
+    fun flushLearning() {
+        if (!isReady) return
+        try {
+            Native.reset(handle)
+        } catch (error: Throwable) {
+            Log.e(TAG, "flush failed", error)
+        }
+    }
+
+    /** Re-reads the user phrases after the settings screen changed them. */
+    fun reloadPhrases() {
+        if (!isReady) return
+        try {
+            Native.reloadPhrases(handle, userDir(appContext).absolutePath)
+        } catch (error: Throwable) {
+            Log.e(TAG, "reloadPhrases failed", error)
+        }
+    }
+
     val hasAssociation: Boolean get() = isReady && associationHandle != 0L
 
     /** Likely next words after [before] (the text before the cursor); empty when unavailable. */
@@ -193,6 +216,9 @@ class PinyinEngine(context: Context) {
     }
 
     companion object {
+        /** Learned words, phrases and stats; kept across updates (only the data directory is re-extracted). */
+        fun userDir(context: Context): File = File(context.applicationContext.filesDir, "qingjian/user")
+
         private const val TAG = "QingshuPinyin"
         private const val ASSET_DIR = "qingjian"
         private const val DICTIONARY = "dict.qj"

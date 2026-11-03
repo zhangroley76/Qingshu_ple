@@ -2631,6 +2631,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
                     // Numen's engine ships its English data in the APK; downloaded dictionaries don't apply.
                     invalidateRenderedStatusSnapshot()
                     updateStatusBarText()
+                } else if (intent?.action == rocks.pkb.plektra.pinyin.QingshuPhrases.ACTION_CHANGED) {
+                    if (::pinyinController.isInitialized) pinyinController.reloadPhrases()
                 } else if (intent?.action == AppBroadcastActions.USER_DICTIONARY_UPDATED) {
                     Log.d(TAG, "User dictionary updated, refreshing...")
                     if (::suggestionController.isInitialized) {
@@ -2642,6 +2644,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         
         val userDictFilter = IntentFilter(AppBroadcastActions.USER_DICTIONARY_UPDATED).apply {
             addAction(rocks.pkb.plektra.dictionaries.DictionaryRepositoryManager.ACTION_DICTIONARIES_CHANGED)
+            addAction(rocks.pkb.plektra.pinyin.QingshuPhrases.ACTION_CHANGED)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(userDictionaryReceiver, userDictFilter, ContextCompat.RECEIVER_NOT_EXPORTED)

@@ -76,3 +76,5 @@ ANDROID_NDK_HOME=/path/to/ndk scripts/build-qingjian-engine.sh arm64-v8a
 6. 正式签名的发布版，配合 Obtainium 自动更新。
 
 之后再看：在键盘表面滑动选字（需要 Shizuku）、Numen 的打字统计首页、直角引号「」。
+
+有空再做（方便其他非拉丁文字的使用者）：韩文（两套式键位，规则组字，不需词库）、日文（青简已有罗马字→假名与少量常用词；完整的假名→汉字转换要另接引擎，例如 Mozc）。

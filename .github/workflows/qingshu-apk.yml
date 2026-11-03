@@ -7,7 +7,7 @@ name: Qingshu APK
 on:
   push:
     # autocorrect: work in progress; built and tested, but its APK and report get "-dev" names.
-    branches: [pinyin, autocorrect]
+    branches: [pinyin, autocorrect, 'dev/**']
   workflow_dispatch:
 
 permissions:
@@ -59,7 +59,9 @@ jobs:
           chmod +x ./gradlew
           set -o pipefail
           # The version name carries the commit, so Settings > About shows which build is installed.
-          ./gradlew assembleStableDebug --stacktrace -PPLEKTRA_VERSION_NAME="26.09-qs.${GITHUB_SHA::7}" 2>&1 | tee build.log
+          # The version code grows with every run, so update tools (Obtainium) see each build as newer.
+          ./gradlew assembleStableDebug --stacktrace -PPLEKTRA_VERSION_NAME="26.09-qs.${GITHUB_SHA::7}" \
+            -PPLEKTRA_VERSION_CODE="$((26090000 + GITHUB_RUN_NUMBER))" 2>&1 | tee build.log
 
       - name: Publish APK
         if: success()
@@ -74,6 +76,16 @@ jobs:
             --prerelease --target "$GITHUB_SHA" \
             --title "Qingshu debug build ${GITHUB_SHA::7}" \
             --notes "Debug APK built from ${GITHUB_SHA} on $(date -u +%Y-%m-%dT%H:%MZ)."
+          # A numbered release per pinyin build, for update tools (Obtainium tracks the latest
+          # release and its tag). Only the newest few are kept.
+          if [ -z "$REL_SUFFIX" ]; then
+            tag="v26.09.${GITHUB_RUN_NUMBER}"
+            gh release create "$tag" qingshu-debug.apk --latest --target "$GITHUB_SHA" \
+              --title "Qingshu 26.09.${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7})" \
+              --notes "Qingshu debug build ${GITHUB_SHA::7}, version code $((26090000 + GITHUB_RUN_NUMBER))."
+            gh release list --limit 100 --json tagName --jq '.[].tagName' | grep '^v26\.' | sort -t. -k3 -n -r | tail -n +6 |
+              while read -r old; do gh release delete "$old" --yes --cleanup-tag; done
+          fi
 
       - name: Keep the APK for the emulator test
         if: success()

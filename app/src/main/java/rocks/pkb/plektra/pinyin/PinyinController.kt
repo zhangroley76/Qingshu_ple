@@ -67,7 +67,10 @@ class PinyinController(
     fun updateActive(chineseSubtype: Boolean, editorInfo: EditorInfo?): Boolean {
         val wanted = chineseSubtype && acceptsPinyin(editorInfo)
         Log.d(TAG, "updateActive chinese=$chineseSubtype inputType=0x${Integer.toHexString(editorInfo?.inputType ?: 0)} -> $wanted")
-        if (!wanted && active) abandon(commitLetters = true)
+        if (!wanted && active) {
+            abandon(commitLetters = true)
+            engine.flushLearning()
+        }
         active = wanted
         if (chineseSubtype) engine.ensureLoaded()
         return active
@@ -400,8 +403,14 @@ class PinyinController(
             frame = PinyinFrame.EMPTY
             highlighted = 0
         }
+        // The engine only saves what it learned on reset; without this, learned words were lost
+        // whenever the process ended (learned=0 on every start).
+        engine.flushLearning()
         publishBar()
     }
+
+    /** The phrase list changed in settings. */
+    fun reloadPhrases() = engine.reloadPhrases()
 
     fun destroy() {
         engine.destroy()

@@ -5,7 +5,7 @@ name: Qingshu dev check
 
 on:
   push:
-    branches: [autocorrect]
+    branches: [autocorrect, 'dev/**']
   workflow_dispatch:
 
 concurrency:

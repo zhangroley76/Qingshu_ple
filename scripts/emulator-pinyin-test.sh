@@ -105,6 +105,22 @@ combo KEYCODE_ALT_LEFT KEYCODE_S
 key KEYCODE_SPACE
 check "partial pick then Space" "吃饭"
 
+log "custom phrase: yx (added by the test activity) is offered; pick it"
+key KEYCODE_BACK
+type_text yx
+adb exec-out screencap -p > "$OUT/phrase.png"
+cands=$(adb logcat -d -s QingshuPinyin:I | grep "key=KEYCODE_X" | tail -1 | grep -o 'candidates=.*')
+n=$(echo "$cands" | tr ',' '\n' | grep -n 'test@example.com' | head -1 | cut -d: -f1)
+if [ -n "$n" ]; then
+  checks+=("PASS | phrase yx offered as candidate $n | $cands")
+  combo KEYCODE_ALT_LEFT "$(echo W E R S D F X C V | cut -d' ' -f"$n" | sed 's/^/KEYCODE_/')"
+else
+  checks+=("FAIL | phrase yx offered | $cands")
+  key KEYCODE_SPACE
+fi
+check "phrase committed" "test@example.com"
+key KEYCODE_BACK
+
 log "zhongwen + Enter commits letters"
 type_text zhongwen
 key KEYCODE_ENTER
@@ -146,6 +162,16 @@ key KEYCODE_SPACE
 check "autocorrect teh -> the" "hello the "
 key KEYCODE_DEL
 check "Backspace undoes the fix" "hello teh"
+
+log "learned Chinese words are saved (written when Chinese is switched off or the field closes)"
+key KEYCODE_HOME
+sleep 2
+learned=$(adb shell run-as $PKG sh -c 'cat files/qingjian/user/user.tsv 2>/dev/null | wc -l' | tr -d '\r ')
+if [ "${learned:-0}" -gt 0 ]; then
+  checks+=("PASS | learned words saved | user.tsv has $learned lines")
+else
+  checks+=("FAIL | learned words saved | user.tsv missing or empty: $(adb shell run-as $PKG ls -la files/qingjian/user 2>&1 | tr '\n' ' ')")
+fi
 adb exec-out screencap -p > "$OUT/final.png"
 
 adb logcat -d -v time > "$OUT/logcat.txt"

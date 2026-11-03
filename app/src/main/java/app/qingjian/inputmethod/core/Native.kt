@@ -37,7 +37,21 @@ internal object Native {
     /** Converts an ASCII punctuation mark to its full-width Chinese form (pairs quotes); returns the text to commit. */
     external fun punctuate(handle: Long, c: Char): String?
 
+    /** Clears the composition and context and writes learned words to the user directory. */
     external fun reset(handle: Long)
+
+    // --- User phrases (常用语); no handle needed. Phrases with a code become candidates for it. ---
+
+    /**
+     * Runs one phrase request on [userDir] and returns the whole list afterwards as JSON
+     * (`{"groups":[...],"phrases":[{"text","group","code"}]}`). Requests:
+     * `{"op":"list"}`, `{"op":"add","text","group","code"}`, `{"op":"update","index",...}`,
+     * `{"op":"remove","index"}`, `{"op":"top","index"}`.
+     */
+    external fun phrases(userDir: String, request: String): String?
+
+    /** Re-reads the phrases after they changed, so their codes reach the candidates. */
+    external fun reloadPhrases(handle: Long, userDir: String)
 
     // --- Offline association (Qingshu patch, third_party/qingjian/0001-qingshu-association.patch) ---
 

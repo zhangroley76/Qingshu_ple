@@ -541,6 +541,16 @@ private fun SettingsMainScreen(
 
             SettingsGroupDivider(stringResource(R.string.settings_group_utility))
 
+            // Qingshu: the user's Chinese phrases (a code typed in pinyin offers the phrase).
+            SettingsCategoryRow(
+                icon = Icons.Filled.Tune,
+                title = "中文常用语",
+                description = "打代码出常用语，例如 yx 出邮箱",
+                onClick = {
+                    context.startActivity(Intent(context, rocks.pkb.plektra.pinyin.QingshuPhrasesActivity::class.java))
+                }
+            )
+
             SettingsCategoryRow(
                 icon = Icons.AutoMirrored.Filled.ManageSearch,
                 title = stringResource(R.string.starter_launcher_shortcuts_title),
