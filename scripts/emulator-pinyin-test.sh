@@ -134,6 +134,25 @@ key KEYCODE_SPACE
 check "back to simplified 输入" "輸入输入"
 key KEYCODE_BACK
 
+log "abbreviated pinyin, English among pinyin candidates, fuzzy pinyin"
+# candidates logged after the last key of a word ($1 = that key, e.g. KEYCODE_H)
+cands_after() { timeout 30 adb logcat -d -s QingshuPinyin:I | grep "key=$1 " | tail -1 | grep -o 'candidates=.*'; }
+expect_cand() { # name, last key, wanted candidate
+  local c; c=$(cands_after "$2")
+  if [[ "$c" == *"$3"* ]]; then checks+=("PASS | $1 | $c"); else checks+=("FAIL | $1 | want $3 in $c"); fi
+}
+type_text nh
+expect_cand "abbreviated nh -> 你好" KEYCODE_H "你好"
+key KEYCODE_BACK
+type_text hello
+expect_cand "English word in pinyin candidates" KEYCODE_O "hello"
+key KEYCODE_BACK
+timeout 30 adb shell am start -f 0x20000000 -n "$PKG/rocks.pkb.plektra.QingshuTestActivity" --es fuzzy z_zh >/dev/null; sleep 1.5
+type_text zongwen
+expect_cand "fuzzy z=zh: zongwen -> 中文" KEYCODE_N "中文"
+key KEYCODE_BACK
+timeout 30 adb shell am start -f 0x20000000 -n "$PKG/rocks.pkb.plektra.QingshuTestActivity" --es fuzzy "" >/dev/null; sleep 1.5
+
 log "zhongwen + Enter commits letters"
 type_text zhongwen
 key KEYCODE_ENTER

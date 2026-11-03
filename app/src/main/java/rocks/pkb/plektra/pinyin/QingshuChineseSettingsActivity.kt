@@ -12,9 +12,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -22,6 +24,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -33,11 +36,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import rocks.pkb.plektra.LocalizedComponentActivity
 import rocks.pkb.plektra.ui.theme.PlektraTheme
 
-/** Qingshu's Chinese settings: traditional output and the phrase list. */
+/** Qingshu's Chinese settings: output form, mixed Chinese/English, fuzzy pinyin and the phrase list. */
 class QingshuChineseSettingsActivity : LocalizedComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -108,6 +112,57 @@ private fun ChineseSettingsScreen(onBack: () -> Unit) {
             )
 
             HorizontalDivider(modifier = Modifier.padding(top = 12.dp))
+            SectionTitle("中英混打")
+            var english by remember { mutableStateOf(QingshuChineseSettings.englishInChinese(context)) }
+            var chineseFirst by remember { mutableStateOf(QingshuChineseSettings.chineseFirst(context)) }
+            SwitchRow(
+                title = "拼音里也给英文单字",
+                description = "中文模式打 hello、meeting 这类英文时，候选里也有英文单字，不用切换",
+                checked = english
+            ) {
+                english = it
+                QingshuChineseSettings.setEnglishInChinese(context, it)
+            }
+            SwitchRow(
+                title = "中文候选排在英文前面",
+                description = "关闭时按可能性混排（打 hello 时 hello 会在前面）",
+                checked = chineseFirst,
+                enabled = english
+            ) {
+                chineseFirst = it
+                QingshuChineseSettings.setChineseFirst(context, it)
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(top = 12.dp))
+            SectionTitle("模糊音")
+            Text(
+                "勾选的两个音当成一样（例如 z = zh 时，打 zongwen 也出「中文」）。简拼不用设定：只打声母就行，例如 nh 出「你好」。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+            var fuzzy by remember { mutableStateOf(QingshuChineseSettings.fuzzy(context)) }
+            for ((rule, label) in QingshuChineseSettings.FUZZY_RULES) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .toggleable(
+                            value = rule in fuzzy,
+                            role = Role.Checkbox,
+                            onValueChange = { on ->
+                                fuzzy = if (on) fuzzy + rule else fuzzy - rule
+                                QingshuChineseSettings.setFuzzy(context, fuzzy)
+                            }
+                        )
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(checked = rule in fuzzy, onCheckedChange = null)
+                    Text(label, modifier = Modifier.padding(start = 12.dp), fontFamily = FontFamily.Monospace)
+                }
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(top = 12.dp))
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -123,6 +178,33 @@ private fun ChineseSettingsScreen(onBack: () -> Unit) {
             }
             HorizontalDivider()
         }
+    }
+}
+
+@Composable
+private fun SwitchRow(
+    title: String,
+    description: String,
+    checked: Boolean,
+    enabled: Boolean = true,
+    onChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onChange)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Switch(checked = checked, enabled = enabled, onCheckedChange = null)
     }
 }
 

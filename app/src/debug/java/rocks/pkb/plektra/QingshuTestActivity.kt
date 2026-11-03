@@ -58,6 +58,10 @@ class QingshuTestActivity : Activity() {
             rocks.pkb.plektra.pinyin.QingshuChineseSettings.setTraditional(this, it)
             Log.i(TAG, "traditional=$it")
         }
+        intent.getStringExtra("fuzzy")?.let {
+            rocks.pkb.plektra.pinyin.QingshuChineseSettings.setFuzzy(this, it.split(',').filter(String::isNotBlank).toSet())
+            Log.i(TAG, "fuzzy=$it")
+        }
     }
 
     private companion object {
