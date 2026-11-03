@@ -31,7 +31,7 @@ jobs:
         if: success()
         run: |
           set -o pipefail
-          ./gradlew testStableDebugUnitTest --tests 'rocks.pkb.plektra.core.suggestions.*' --continue 2>&1 | tee test.log
+          ./gradlew testStableDebugUnitTest --tests 'rocks.pkb.plektra.core.suggestions.*' --tests 'rocks.pkb.plektra.pinyin.*' --continue 2>&1 | tee test.log
       - name: Errors
         if: failure()
         run: |

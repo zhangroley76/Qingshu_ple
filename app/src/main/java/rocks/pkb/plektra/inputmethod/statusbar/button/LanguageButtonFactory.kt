@@ -145,11 +145,8 @@ class LanguageButtonFactory : StatusBarButtonFactory {
     }
 
     private fun applyLanguageTextIfChanged(button: TextView, subtypeLanguageCode: String) {
-        val languageCode = if (rocks.pkb.plektra.pinyin.QingshuMode.chineseActive) {
-            rocks.pkb.plektra.pinyin.QingshuMode.LANGUAGE_LABEL
-        } else {
-            subtypeLanguageCode
-        }
+        val languageCode = rocks.pkb.plektra.pinyin.QingshuMode.label(rocks.pkb.plektra.pinyin.QingshuMode.mode)
+            ?: subtypeLanguageCode
         if (button.text?.toString() == languageCode) {
             return
         }

@@ -113,6 +113,22 @@ private fun ChineseSettingsScreen(onBack: () -> Unit) {
             )
 
             HorizontalDivider(modifier = Modifier.padding(top = 12.dp))
+            SectionTitle("其他语言")
+            var korean by remember { mutableStateOf(QingshuMode.MODE_KOREAN in QingshuMode.extraLanguages(context)) }
+            SwitchRow(
+                title = "한국어（韩文）",
+                description = "两套式键位。开启后 Shift+空格依序切换：English → 中文 → 한국어",
+                checked = korean
+            ) {
+                korean = it
+                val languages = QingshuMode.extraLanguages(context)
+                QingshuMode.setExtraLanguages(
+                    context,
+                    if (it) languages + QingshuMode.MODE_KOREAN else languages - QingshuMode.MODE_KOREAN
+                )
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(top = 12.dp))
             SectionTitle("中英混打")
             var english by remember { mutableStateOf(QingshuChineseSettings.englishInChinese(context)) }
             var chineseFirst by remember { mutableStateOf(QingshuChineseSettings.chineseFirst(context)) }

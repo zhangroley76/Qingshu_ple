@@ -58,6 +58,10 @@ class QingshuTestActivity : Activity() {
             rocks.pkb.plektra.pinyin.QingshuChineseSettings.setTraditional(this, it)
             Log.i(TAG, "traditional=$it")
         }
+        intent.getStringExtra("languages")?.let {
+            rocks.pkb.plektra.pinyin.QingshuMode.setExtraLanguages(this, it.split(',').filter(String::isNotBlank).toSet())
+            Log.i(TAG, "languages=$it")
+        }
         intent.getStringExtra("corner")?.let {
             rocks.pkb.plektra.pinyin.QingshuChineseSettings.setCornerQuotes(this, it == "on")
             Log.i(TAG, "corner=$it")

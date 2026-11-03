@@ -158,6 +158,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     private var smoothCaretEditorHidden = false
     private lateinit var candidatesBarController: CandidatesBarController
     private lateinit var pinyinController: rocks.pkb.plektra.pinyin.PinyinController
+    private val hangulController = rocks.pkb.plektra.pinyin.HangulController { currentInputConnection }
     /** Locale of the last non-Chinese language, the target of Shift+Space from Chinese. */
     private var lastNonChineseSubtypeLocale: String? = null
     private var pinyinBarVisible = false
@@ -267,6 +268,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         get() {
             // Chinese has no capitals; an auto-cap Shift would turn the first pinyin letter into English.
             if (::pinyinController.isInitialized && pinyinController.active) return true
+            if (hangulController.active) return true // Korean has no capitals; Shift types ㄲ ㄸ ㅃ ㅆ ㅉ
             if (!inputContextState.shouldDisableAutoCapitalize) return false
             // Explicit app or field opt-outs take priority over the optional
             // capitalization of restricted field types such as email and URL.
@@ -1878,7 +1880,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
 
         modifierStateController = ModifierStateController(DOUBLE_TAP_THRESHOLD)
         modifierStateController.autoCapBlocked = {
-            ::pinyinController.isInitialized && pinyinController.active
+            (::pinyinController.isInitialized && pinyinController.active) || hangulController.active
         }
         updateModifierTapLatchSettings()
         navModeController = NavModeController(this, modifierStateController)
@@ -1907,7 +1909,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             // Never on Chinese text: pinyin owns every key while Chinese is active.
             isEnabled = {
                 SettingsManager.isExperimentalSuggestionsEnabled(this) && !inputContextState.shouldDisableSuggestions &&
-                    !(::pinyinController.isInitialized && pinyinController.active)
+                    !(::pinyinController.isInitialized && pinyinController.active) && !hangulController.active
             },
             debugLogging = suggestionDebugLogging,
             onSuggestionsUpdated = { suggestions -> handleSuggestionsUpdated(suggestions) },
@@ -3387,8 +3389,16 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         // Chinese is on either because the Chinese language is selected in Android, or because the
         // user switched to it with Shift+Space / the language button (Qingshu's own mode, which
         // doesn't depend on Android enabling the language).
-        val chinese = subtypeChinese || chineseModeEnabled()
-        rocks.pkb.plektra.pinyin.QingshuMode.chineseActive = chinese
+        val stored = rocks.pkb.plektra.pinyin.QingshuMode.storedMode(this).let { mode ->
+            // A language switched off in settings falls back to English.
+            if (mode == rocks.pkb.plektra.pinyin.QingshuMode.MODE_KOREAN && mode !in rocks.pkb.plektra.pinyin.QingshuMode.extraLanguages(this)) rocks.pkb.plektra.pinyin.QingshuMode.MODE_ENGLISH else mode
+        }
+        val mode = if (subtypeChinese) rocks.pkb.plektra.pinyin.QingshuMode.MODE_CHINESE else stored
+        rocks.pkb.plektra.pinyin.QingshuMode.mode = mode
+        val chinese = mode == rocks.pkb.plektra.pinyin.QingshuMode.MODE_CHINESE
+        hangulController.updateActive(
+            mode == rocks.pkb.plektra.pinyin.QingshuMode.MODE_KOREAN && rocks.pkb.plektra.pinyin.PinyinController.acceptsPinyin(editorInfo)
+        )
         if (::symLayoutController.isInitialized) {
             symLayoutController.chineseSymbolsOverride =
                 if (chinese) rocks.pkb.plektra.pinyin.ChineseSymbols.MAPPINGS else null
@@ -3405,7 +3415,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
     }
 
     private fun chineseModeEnabled(): Boolean =
-        SettingsManager.getPreferences(this).getBoolean(rocks.pkb.plektra.pinyin.QingshuMode.PREF_CHINESE_MODE, false)
+        rocks.pkb.plektra.pinyin.QingshuMode.storedMode(this) == rocks.pkb.plektra.pinyin.QingshuMode.MODE_CHINESE
 
     private fun isShiftSpaceChord(event: KeyEvent?): Boolean {
         val shift = event?.isShiftPressed == true || shiftPressed ||
@@ -3425,10 +3435,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         if (::pinyinController.isInitialized && pinyinController.isComposing) {
             pinyinController.abandon(commitLetters = true)
         }
-        val turnOn = !rocks.pkb.plektra.pinyin.QingshuMode.chineseActive
-        SettingsManager.getPreferences(this).edit()
-            .putBoolean(rocks.pkb.plektra.pinyin.QingshuMode.PREF_CHINESE_MODE, turnOn)
-            .apply()
+        hangulController.finish()
+        val next = rocks.pkb.plektra.pinyin.QingshuMode.cycle(this, rocks.pkb.plektra.pinyin.QingshuMode.mode)
+        val turnOn = next == rocks.pkb.plektra.pinyin.QingshuMode.MODE_CHINESE
+        rocks.pkb.plektra.pinyin.QingshuMode.storeMode(this, next)
         if (!turnOn && rocks.pkb.plektra.pinyin.PinyinController.isChineseLocale(currentSubtypeLocale())) {
             // Chinese was selected as an Android language: move to another one.
             val target = SubtypeCycler.getAvailableSubtypes(this, PhysicalKeyboardInputMethodService::class.java)
@@ -3445,8 +3455,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             }
         }
         updatePinyinActive()
-        Log.i(TAG, "Pinyin: toggled Chinese ${if (turnOn) "on" else "off"}")
-        android.widget.Toast.makeText(this, if (turnOn) "中文" else "English", android.widget.Toast.LENGTH_SHORT).show()
+        Log.i(TAG, "Pinyin: toggled Chinese ${if (turnOn) "on" else "off"} (mode $next)")
+        android.widget.Toast.makeText(this, rocks.pkb.plektra.pinyin.QingshuMode.toastLabel(next), android.widget.Toast.LENGTH_SHORT).show()
         updateStatusBarText()
         return true
     }
@@ -3544,6 +3554,20 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             modifierStateController.shiftPhysicallyPressed || shiftOneShot || shiftLayerLatched || capsLockEnabled
         val meta = event?.isMetaPressed == true
 
+        if (hangulController.active) {
+            val consumed = hangulController.onKeyDown(
+                keyCode = keyCode,
+                shift = shift && !capsLockEnabled || event?.isShiftPressed == true,
+                alt = alt,
+                ctrlOrMeta = ctrl || meta,
+                overlayActive = symLayoutController.isSymActive() || navModeController.isNavModeActive()
+            )
+            if (consumed && shiftOneShot) {
+                modifierStateController.consumeShiftOneShot()
+                updateStatusBarText()
+            }
+            return consumed
+        }
         if (!pinyinController.active) return false
         val wasComposing = pinyinController.isComposing
         val consumed = pinyinController.onKeyDown(
@@ -4155,6 +4179,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         pendingKeyboardSurfaceTransition = null
         super.onFinishInput()
         if (::pinyinController.isInitialized) pinyinController.onFinishInput()
+        hangulController.onFinishInput()
         caretBadgeController.onEditorGone()
         if (::textExpansionController.isInitialized) textExpansionController.clear()
         keyboardVisibilityController.cancelPendingSurfaceTransition()
@@ -4737,6 +4762,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         val perfStart = ImePerfLogger.mark()
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
         if (openShortcutHelpIfTyped(oldSelStart, newSelStart, newSelEnd)) return
+        if (hangulController.onSelectionUpdate(candidatesEnd, newSelStart, newSelEnd)) return
         if (::pinyinController.isInitialized &&
             pinyinController.onSelectionUpdate(newSelStart, newSelEnd, candidatesStart, candidatesEnd)
         ) {
