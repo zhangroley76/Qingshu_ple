@@ -248,6 +248,24 @@ class PinyinController(
     }
 
     /** Looks up next words for the text now before the cursor and shows them. */
+    /** Text before the cursor when the associations were computed. */
+    private var associationContext: String = ""
+
+    /**
+     * Whether the cursor still sits right after the text the associations were computed for.
+     * The editor's selection update can arrive late (after [OWN_EDIT_WINDOW_MS]) on a busy
+     * device, so a late update for our own commit must not dismiss them.
+     */
+    private fun cursorStillAfterAssociationContext(newSelStart: Int, newSelEnd: Int): Boolean {
+        if (newSelStart != newSelEnd || associationContext.isEmpty()) return false
+        val now = try {
+            inputConnection()?.getTextBeforeCursor(ASSOCIATION_CONTEXT, 0)?.toString()
+        } catch (_: Exception) {
+            null
+        } ?: return false
+        return now == associationContext
+    }
+
     private fun showAssociations() {
         associations = if (associationEnabled && active && engine.hasAssociation) {
             val before = try {
@@ -255,6 +273,7 @@ class PinyinController(
             } catch (_: Exception) {
                 ""
             }
+            associationContext = before
             engine.associate(before, PAGE_SIZE)
         } else {
             emptyList()
@@ -352,7 +371,11 @@ class PinyinController(
     fun onSelectionUpdate(newSelStart: Int, newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int): Boolean {
         val recentOwnEdit = SystemClock.uptimeMillis() - lastEditUptime < OWN_EDIT_WINDOW_MS
         if (!frame.isComposing) {
-            if (associations.isNotEmpty() && !recentOwnEdit) clearAssociations()
+            if (associations.isNotEmpty() && !recentOwnEdit &&
+                !cursorStillAfterAssociationContext(newSelStart, newSelEnd)
+            ) {
+                clearAssociations()
+            }
             return false
         }
         val cursorAtComposingEnd = candidatesEnd >= 0 && newSelStart == newSelEnd && newSelEnd == candidatesEnd
