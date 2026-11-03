@@ -128,6 +128,15 @@ android {
     }
 
     signingConfigs {
+        // Qingshu: debug builds always use the shared key in the repo, so every build (CI or local)
+        // installs over the previous one. A key Gradle generates per machine would not.
+        getByName("debug") {
+            storeFile = rootProject.file(".github/qingshu-debug-keystore.p12")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+            storeType = "PKCS12"
+        }
         create("release") {
             val storePath = signingProp("storeFile", "PLEKTRA_KEYSTORE_PATH")
             val storePass = signingProp("storePassword", "PLEKTRA_KEYSTORE_PASSWORD")
@@ -262,6 +271,9 @@ android {
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             isMinifyEnabled = true
             proguardFiles(
