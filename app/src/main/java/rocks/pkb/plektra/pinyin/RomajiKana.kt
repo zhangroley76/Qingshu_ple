@@ -25,7 +25,7 @@ object RomajiKana {
         row("m", "まみむめも")
         row("y", "や ゆ よ")
         row("r", "らりるれろ"); row("l", "ぁぃぅぇぉ")
-        row("w", "わ  を")
+        row("w", "わ   を")
         row("x", "ぁぃぅぇぉ")
         row("f", "ふ ふ ふ")
         put("fa", "ふぁ"); put("fi", "ふぃ"); put("fe", "ふぇ"); put("fo", "ふぉ"); put("fyu", "ふゅ")
