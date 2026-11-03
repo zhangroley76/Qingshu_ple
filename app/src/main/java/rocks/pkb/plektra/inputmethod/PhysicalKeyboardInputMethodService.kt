@@ -4631,9 +4631,6 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             if (!inputContextState.shouldDisableSuggestions) {
                 suggestionController.readInitialContext(currentInputConnection)
             }
-            if (Log.isLoggable(TAG, Log.DEBUG)) {
-                Log.d(TAG, "IME subtype changed, updating locale to: ${newLocale.language}")
-            }
         }
         
         val layoutToUse = AdditionalSubtypeUtils.resolveInputStyleLayout(assets, this, newSubtype)
