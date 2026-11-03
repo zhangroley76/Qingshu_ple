@@ -119,11 +119,15 @@ class JapaneseController(
         if (index in candidates.indices) select(index)
     }
 
-    fun step(forward: Boolean) {
-        if (candidates.isEmpty()) return
-        highlighted = (highlighted + if (forward) 1 else -1).coerceIn(0, candidates.size - 1)
+    /** Moves the highlight; returns whether it moved. */
+    fun step(forward: Boolean): Boolean {
+        if (candidates.isEmpty()) return false
+        val next = (highlighted + if (forward) 1 else -1).coerceIn(0, candidates.size - 1)
+        if (next == highlighted) return false
+        highlighted = next
         pageStart = (highlighted / PAGE_SIZE) * PAGE_SIZE
         publishBar()
+        return true
     }
 
     fun page(forward: Boolean, wrap: Boolean = false) {
