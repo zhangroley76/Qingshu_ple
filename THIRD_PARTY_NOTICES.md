@@ -86,3 +86,73 @@ and their manifests. Conversion and serialization scripts live under `scripts/`.
 Provenance note: the maintained dictionary pipeline and current maintainer-provided sources point
 mainly to Leipzig/Wortschatz frequency data. Some older bundled entries predate the current
 documentation trail, so their exact upstream corpus IDs are not fully reconstructed here.
+
+<!-- Qingshu: the sections below come with Numen's English autocorrect data (https://github.com/jlo-aug/numen). -->
+
+## English word-pair counts (sentence-aware correction)
+
+`app/src/main/assets/common/dictionaries/en_pairs.txt` contains word-pair counts built by
+`tools/build_context_pairs.py` (details in `app/src/main/assets/common/dictionaries/en_pairs_NOTICE.txt`) from:
+
+- Simple English Wikipedia (https://simple.wikipedia.org), CC BY-SA 4.0
+- Tatoeba English sentences (https://tatoeba.org), CC BY 2.0 FR
+- Google Books Ngram top English 2-grams via https://github.com/orgtre/google-books-ngram-frequency, CC BY 3.0
+
+Only aggregated counts are included. The file is distributed under CC BY-SA 4.0.
+
+## English word-triple counts (autocorrect ranking)
+
+`app/src/main/assets/common/dictionaries/en_triples.txt` contains word-triple counts built by
+`tools/build_context_triples.py` (details in `app/src/main/assets/common/dictionaries/en_triples_NOTICE.txt`) from
+Tatoeba English sentences (https://tatoeba.org), CC BY 2.0 FR. Only aggregated counts are included.
+
+## English real-word confusions (autocorrect)
+
+`app/src/main/assets/common/dictionaries/en_confusions.txt` contains real-word confusion counts built by
+`tools/build_confusions.py` (details in `app/src/main/assets/common/dictionaries/en_confusions_NOTICE.txt`) from
+the Aalto ITE typing dataset (doi:10.5281/zenodo.12528163), CC BY 4.0. Only aggregated counts are included.
+
+## English common misspellings (Wikipedia)
+
+`app/src/main/assets/common/dictionaries/en_misspellings.txt` lists common misspellings and their fixes, built by
+`tools/build_misspellings.py` from Wikipedia's "Lists of common misspellings/For machines"
+(https://en.wikipedia.org/wiki/Wikipedia:Lists_of_common_misspellings/For_machines), CC BY-SA 4.0.
+The file is distributed under CC BY-SA 4.0.
+
+## English first names (US Social Security Administration)
+
+`app/src/main/assets/common/dictionaries/en_names.txt` lists common first names that autocorrect leaves alone, built by
+`tools/build_first_names.py` from US Social Security Administration baby-name data (public domain, a work of the
+US government), via the top-1000-per-year table at https://github.com/hadley/data-baby-names.
+
+## Typing research used for tuning (not included in the app)
+
+Autocorrect's weights were fitted and tested on two research datasets, which are not shipped:
+the Aalto ITE typing dataset (Aalto University, CC BY 4.0, https://doi.org/10.5281/zenodo.12528163)
+and the 136M keystrokes dataset (Dhakal et al. 2018, Aalto University,
+https://userinterfaces.aalto.fi/136Mkeystrokes/, research and non-commercial use with attribution).
+
+## English recognised words (SCOWL)
+
+`app/src/main/assets/common/dictionaries/en_known.txt` lists real English words that autocorrect leaves alone, built by
+`tools/build_known_words.py` from SCOWL size 60 (http://wordlist.aspell.net).
+
+Copyright 2000-2018 by Kevin Atkinson
+
+Permission to use, copy, modify, distribute and sell these word lists, the associated scripts,
+the output created from the scripts, and its documentation for any purpose is hereby granted
+without fee, provided that the above copyright notice appears in all copies and that both that
+copyright notice and this permission notice appear in supporting documentation. Kevin Atkinson
+makes no representations about the suitability of this array for any purpose. It is provided
+"as is" without express or implied warranty.
+
+SCOWL also includes material from the Moby Words II lists (public domain), the ENABLE word list
+and 12Dicts by Alan Beale (public domain), and the UK English Wordlist with Frequency
+Classification by Brian Kelk; see the SCOWL Copyright file for the full attributions.
+
+## Test data (not shipped in the app)
+
+- `app/src/test/resources/simulation/tatoeba_heldout_en.txt`: 3,000 English sentences from
+  [Tatoeba](https://tatoeba.org) by Tatoeba contributors, CC BY 2.0 FR, used by the keyboard
+  simulation tests. They are held out of the word-pair counts.
+- `app/src/test/resources/simulation/chat_messages_en.txt`: messages written for Numen's tests.

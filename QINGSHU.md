@@ -62,4 +62,4 @@ ANDROID_NDK_HOME=/path/to/ndk scripts/build-qingjian-engine.sh arm64-v8a
 - 用户词库是否学习常用词尚未验证。
 - Titan 2 系统设置里的「双击空格输入句号」和空格快捷功能可能拦截空格，请先关掉。
 - 实体键盘表面滑动移动高亮：系统的「光标助手」若送出方向键事件即可直接用；否则需要 Shizuku。
-- Numen 的英文纠错尚未移植。
+- 英文自动纠错移植自 Numen（`core/suggestions` 整套换成 Numen 的版本，资料在 `assets/common/dictionaries/en_*`）。纠正后马上按退格可还原；同一个字还原两次会被学起来。设置里的 Auto-replace on space/enter 可以关掉。

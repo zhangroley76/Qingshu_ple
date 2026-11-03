@@ -24,6 +24,8 @@ Qingshu 是 [Plektra](https://github.com/pkb-rocks/plektra)（Pastiera 的后续
 | 中文标点 | Alt+标点输入全角标点（数字后的 . , : 保持半角）；SYM 第一页是中文标点 |
 | Shift/Alt 对调 | Titan 的 Alt 位置不好按数字，可以在设置 → Keyboard → Modifiers 对调 |
 | 不干扰英文 | 中文模式下首字母不会被自动大写；密码、网址、电邮栏位不走拼音；英文模式维持 Plektra 原本的行为 |
+| 英文自动纠错 | 移植自 [Numen](https://github.com/jlo-aug/numen)：按 Titan 2 Elite 键位估计手指打错的可能，修正漏字母、多字母、字母颠倒、按到隔壁键、漏空格和常见拼错（helo → hello、teh → the、arguement → argument）；会看前后文（form my → from my）；纠正后马上按退格可还原。只在英文模式作用，中文模式不碰 |
+| Fn 方向键 | Titan 2 Elite 的 Fn 键（厂商键码 403）当成 Ctrl：在设置 → Nav Mode 打开 Ctrl-hold navigation 后，按住 Fn + E S D F 是上左下右 |
 | 调试报告 | 从 App 内分享报告时附上按键日志，方便回报问题 |
 
 Plektra 原有的功能都还在，包括导航模式（Fn+E S D F 方向键）、SYM 符号页、剪贴板历史、文字展开和键盘栏主题。详见 [Plektra 的说明](https://github.com/pkb-rocks/plektra)。
@@ -44,7 +46,7 @@ Plektra 原有的功能都还在，包括导航模式（Fn+E S D F 方向键）�
 - 每次推送都会用 GitHub Actions 编译，并在 Android 模拟器上跑自动化按键测试，覆盖组字、选字、联想、翻页和标点。
 - 点选候选、SYM 中文标点、键盘表面滑动这几项还要在实机上确认。
 
-**计划中**：移植 [Numen](https://github.com/jlo-aug/numen) 的英文自动纠错。
+英文自动纠错用 Numen 的测试检验：模拟 2 万多个英文字、12% 打错的聊天，修正约 80% 的错字，正确的字被改错约 1/1800（`ChatSimulationTest`、`TypoBenchmarkTest`，每次推送都在 CI 跑）。
 
 ## 编译
 
@@ -64,6 +66,6 @@ Qingshu 对青简源码的修改放在 [`third_party/qingjian/`](third_party/qin
 
 - [Plektra](https://github.com/pkb-rocks/plektra)：Patrick Zauner；前身是 Andrea Palumbo（PalSoftware）开发的 Pastiera
 - [青简 Qingjian](https://github.com/qingjian-team/qingjian)：拼音引擎、词库与语言模型
-- [Numen](https://github.com/jlo-aug/numen)：英文纠错的参考来源（计划中）
+- [Numen](https://github.com/jlo-aug/numen)：英文自动纠错引擎与数据（GPL-3.0；词频与语料来源见其 THIRD_PARTY_NOTICES：Simple English Wikipedia、Tatoeba、Google Books Ngram、SCOWL、Wikipedia 常见拼错表、Aalto 打字数据集、SSA 名字）
 
 Plektra 和青简都使用 GPL-3.0 授权（青简是 GPL-3.0-or-later），Qingshu 同样以 [GPL-3.0](LICENSE) 发布。Qingshu 不是 Plektra 或青简的官方版本，请不要把这里的问题回报给上游项目。
