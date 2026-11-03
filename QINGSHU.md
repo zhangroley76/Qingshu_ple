@@ -63,3 +63,16 @@ ANDROID_NDK_HOME=/path/to/ndk scripts/build-qingjian-engine.sh arm64-v8a
 - Titan 2 系统设置里的「双击空格输入句号」和空格快捷功能可能拦截空格，请先关掉。
 - 实体键盘表面滑动移动高亮：系统的「光标助手」若送出方向键事件即可直接用；否则需要 Shizuku。
 - 英文自动纠错移植自 Numen（`core/suggestions` 整套换成 Numen 的版本，资料在 `assets/common/dictionaries/en_*`）。纠正后马上按退格可还原；同一个字还原两次会被学起来。设置里的 Auto-replace on space/enter 可以关掉。
+
+## 接下来的计划
+
+依序：
+
+1. 中文学习存不下来：重新载入引擎时 `learned=0`，常用词重启后忘记。
+2. 繁体输出开关（OpenCC 对照，可选台湾用字）。
+3. 中文自定义短语：例如 `yx` 出邮箱，直接是拼音候选。
+4. 中英混打：拼音候选里同时列出对应的英文单字。
+5. 模糊音（z/zh、c/ch、s/sh、n/l、an/ang）与简拼（`nh` → 你好）。
+6. 正式签名的发布版，配合 Obtainium 自动更新。
+
+之后再看：在键盘表面滑动选字（需要 Shizuku）、Numen 的打字统计首页、直角引号「」。
