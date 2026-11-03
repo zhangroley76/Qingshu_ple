@@ -991,7 +991,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             maxSuggestions = 3,
             useKeyboardProximity = SettingsManager.getUseKeyboardProximity(this),
             useEditTypeRanking = SettingsManager.getUseEditTypeRanking(this),
-            frenchPunctuationSpacing = SettingsManager.shouldApplyFrenchPunctuationSpacing(this),
+            // Numen's autocorrect (Titan 2 Elite slip model, sentence context). Both need automatic
+            // correction, which provides Backspace undo.
+            aggressiveAutoReplace = SettingsManager.getAggressiveAutoReplace(this) &&
+                SettingsManager.getAutoReplaceOnSpaceEnter(this),
+            contextAwareCorrection = SettingsManager.getContextAwareCorrection(this) &&
+                SettingsManager.getAutoReplaceOnSpaceEnter(this),
             commaSpace = SettingsManager.getCommaSpace(this),
             autoSpacePunctuation = SettingsManager.getAutoSpacePunctuation(this)
         )
@@ -1667,8 +1672,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         )
         updateStatusBarText()
 
-        // Update suggestion engine's keyboard layout for proximity-based ranking
-        suggestionController?.updateKeyboardLayout(layoutName)
+        // Numen's autocorrect models the Titan's QWERTY keys only; nothing to update here.
     }
 
     private fun cycleLayoutFromShortcut() {
@@ -1900,12 +1904,19 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
             context = this,
             assets = assets,
             settingsProvider = { getSuggestionSettings() },
-            isEnabled = { SettingsManager.isExperimentalSuggestionsEnabled(this) && !inputContextState.shouldDisableSuggestions },
+            // Never on Chinese text: pinyin owns every key while Chinese is active.
+            isEnabled = {
+                SettingsManager.isExperimentalSuggestionsEnabled(this) && !inputContextState.shouldDisableSuggestions &&
+                    !(::pinyinController.isInitialized && pinyinController.active)
+            },
             debugLogging = suggestionDebugLogging,
             onSuggestionsUpdated = { suggestions -> handleSuggestionsUpdated(suggestions) },
             currentLocale = initialLocale,
-            keyboardLayoutProvider = { SettingsManager.getKeyboardLayout(this) },
-            activeSuggestionLocalesProvider = { getAdditionalSuggestionLocalesForActiveInputStyle() }
+            typingStats = rocks.pkb.plektra.core.suggestions.TypingStats(
+                getSharedPreferences(rocks.pkb.plektra.core.suggestions.TypingStats.PREFS_NAME, MODE_PRIVATE)
+            ),
+            isStatsAllowed = { !inputContextState.shouldDisableSuggestions && !isIncognitoField() },
+            isLearningAllowed = { !isIncognitoField() }
         )
         inputEventRouter.suggestionController = suggestionController
         
@@ -2617,7 +2628,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         userDictionaryReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 if (intent?.action == rocks.pkb.plektra.dictionaries.DictionaryRepositoryManager.ACTION_DICTIONARIES_CHANGED) {
-                    if (::suggestionController.isInitialized) suggestionController.reloadDictionaries()
+                    // Numen's engine ships its English data in the APK; downloaded dictionaries don't apply.
                     invalidateRenderedStatusSnapshot()
                     updateStatusBarText()
                 } else if (intent?.action == AppBroadcastActions.USER_DICTIONARY_UPDATED) {
@@ -3483,6 +3494,10 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         return true
     }
 
+    /** Fields that ask the keyboard not to learn (incognito tabs and the like). */
+    private fun isIncognitoField(): Boolean =
+        (currentInputEditorInfo?.imeOptions ?: 0) and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING != 0
+
     private fun handlePinyinKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         if (!::pinyinController.isInitialized) return false
         if (pinyinController.active) {
@@ -3940,6 +3955,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         
         currentPackageName = info?.packageName
         updateDebugImeContextSnapshot(info)
+        // Numen: a new field, so a correction made elsewhere can no longer be undone here.
+        AutoCorrector.acceptLastCorrection()
         
         // Reset clipboard overlay when starting new input
 
@@ -4610,8 +4627,7 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         updatePinyinActive(newSubtype.localeString())
 
         if (::suggestionController.isInitialized) {
-            val newLocale = getLocaleFromSubtype(newSubtype)
-            suggestionController.updateLocale(newLocale)
+            // Numen's autocorrect is English only; the locale stays as created.
             if (!inputContextState.shouldDisableSuggestions) {
                 suggestionController.readInitialContext(currentInputConnection)
             }
@@ -5003,6 +5019,12 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
                 )
                 return true
             }
+        }
+        // Numen: count every physical key press for the typing speed shown on the home screen.
+        if (event_ != null && event_.repeatCount == 0 && (event_.isPrintingKey || keyCode_ == KeyEvent.KEYCODE_DEL) &&
+            ::suggestionController.isInitialized && (currentInputEditorInfo?.inputType ?: 0) != android.text.InputType.TYPE_NULL
+        ) {
+            suggestionController.onTypingKey()
         }
         val remapped = remapHardwareEvent(keyCode_, event_)
         if ((::pinyinController.isInitialized && pinyinController.active) ||

@@ -864,6 +864,11 @@ class InputEventRouter(
         }
         val isWordApostrophe = typedChar == '\'' && prevChar?.isLetterOrDigit() == true
         val isBoundaryKey = isSpaceKey || isEnterKey
+        // Numen: Backspace-undo applies only right after a correction. Hardware letters never reach
+        // onCharacterCommitted, so close the undo window here for every other non-modifier key.
+        if (keyCode != KeyEvent.KEYCODE_DEL && !KeyEvent.isModifierKey(keyCode)) {
+            suggestionController?.clearLastReplacement()
+        }
         // Apostrophe is never a boundary/punctuation for suggestions.
         val boundarySet = rocks.pkb.plektra.core.Punctuation.BOUNDARY
         val isPunctuation = typedChar != null &&

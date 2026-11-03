@@ -352,7 +352,12 @@ object SettingsManager {
     private const val DEFAULT_SNIPPETS_ENABLED = false
     private const val DEFAULT_SNIPPETS_PREFIX = "!"
     private const val DEFAULT_ACCENT_MATCHING_ENABLED = true
-    private const val DEFAULT_AUTO_REPLACE_ON_SPACE_ENTER = false
+    // Qingshu: on by default, as in Numen (Backspace right after a fix undoes it).
+    private const val DEFAULT_AUTO_REPLACE_ON_SPACE_ENTER = true
+    private const val KEY_AGGRESSIVE_AUTO_REPLACE = "aggressive_auto_replace"
+    private const val DEFAULT_AGGRESSIVE_AUTO_REPLACE = true
+    private const val KEY_CONTEXT_AWARE_CORRECTION = "context_aware_correction"
+    private const val DEFAULT_CONTEXT_AWARE_CORRECTION = true
     private const val DEFAULT_MAX_AUTO_REPLACE_DISTANCE = 1
     private const val DEFAULT_AUTO_CAPITALIZE_AFTER_PERIOD = true
     private const val DEFAULT_LONG_PRESS_MODIFIER = "alt"
@@ -3124,6 +3129,25 @@ object SettingsManager {
     /**
      * Returns whether auto-replace on space/enter is enabled.
      */
+    /**
+     * Numen's autocorrect: missing or extra letters, two edits on long words, neighbouring keys of
+     * the Titan 2 Elite, missed spaces and common misspellings.
+     */
+    fun getAggressiveAutoReplace(context: Context): Boolean =
+        getPreferences(context).getBoolean(KEY_AGGRESSIVE_AUTO_REPLACE, DEFAULT_AGGRESSIVE_AUTO_REPLACE)
+
+    fun setAggressiveAutoReplace(context: Context, enabled: Boolean) {
+        getPreferences(context).edit().putBoolean(KEY_AGGRESSIVE_AUTO_REPLACE, enabled).apply()
+    }
+
+    /** Numen: a real but wrong word is fixed from the surrounding sentence ("form my mom"). */
+    fun getContextAwareCorrection(context: Context): Boolean =
+        getPreferences(context).getBoolean(KEY_CONTEXT_AWARE_CORRECTION, DEFAULT_CONTEXT_AWARE_CORRECTION)
+
+    fun setContextAwareCorrection(context: Context, enabled: Boolean) {
+        getPreferences(context).edit().putBoolean(KEY_CONTEXT_AWARE_CORRECTION, enabled).apply()
+    }
+
     fun getAutoReplaceOnSpaceEnter(context: Context): Boolean {
         return getPreferences(context).getBoolean(KEY_AUTO_REPLACE_ON_SPACE_ENTER, DEFAULT_AUTO_REPLACE_ON_SPACE_ENTER)
     }
