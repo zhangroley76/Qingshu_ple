@@ -216,7 +216,7 @@ combo KEYCODE_SHIFT_LEFT KEYCODE_SPACE
 sleep 1
 combo KEYCODE_SHIFT_LEFT KEYCODE_SPACE
 sleep 1
-type_text " dkssudgktpdy"
+type_text "%sdkssudgktpdy"
 key KEYCODE_SPACE
 check "Korean 안녕하세요" "안녕하세요 "
 type_text ekfr
