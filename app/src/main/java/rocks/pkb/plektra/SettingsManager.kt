@@ -3440,6 +3440,10 @@ object SettingsManager {
      * Saves custom corrections for a language.
      * @param languageName The display name of the language (optional, if null it is not saved/updated)
      */
+    /** Numen's English-only form, used by its tests. */
+    fun saveCustomAutoCorrections(context: Context, corrections: Map<String, String>) =
+        saveCustomAutoCorrections(context, "en", corrections)
+
     fun saveCustomAutoCorrections(
         context: Context, 
         languageCode: String, 
