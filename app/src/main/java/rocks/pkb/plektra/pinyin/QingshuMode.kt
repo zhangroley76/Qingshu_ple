@@ -3,11 +3,12 @@ package rocks.pkb.plektra.pinyin
 import android.content.Context
 import rocks.pkb.plektra.SettingsManager
 
-/** Qingshu's input languages on top of the Android keyboard language: English, 中文, 한국어. */
+/** Qingshu's input languages on top of the Android keyboard language: English, 中文, 한국어, 日本語. */
 object QingshuMode {
     const val MODE_ENGLISH = "en"
     const val MODE_CHINESE = "zh"
     const val MODE_KOREAN = "ko"
+    const val MODE_JAPANESE = "ja"
 
     /** The current mode, for UI pieces that don't have the service at hand (the language button). */
     @Volatile
@@ -26,12 +27,14 @@ object QingshuMode {
     fun label(mode: String): String? = when (mode) {
         MODE_CHINESE -> "中"
         MODE_KOREAN -> "한"
+        MODE_JAPANESE -> "あ"
         else -> null
     }
 
     fun toastLabel(mode: String): String = when (mode) {
         MODE_CHINESE -> "中文"
         MODE_KOREAN -> "한국어"
+        MODE_JAPANESE -> "日本語"
         else -> "English"
     }
 
@@ -56,10 +59,10 @@ object QingshuMode {
         SettingsManager.getPreferences(context).edit().putStringSet(PREF_EXTRA_LANGUAGES, languages.toSet()).apply()
     }
 
-    /** Shift+Space order: English → 中文 → 한국어 (if on) → English. */
+    /** Shift+Space order: English → 中文 → 한국어 / 日本語 (those switched on) → English. */
     fun cycle(context: Context, from: String): String {
         val order = listOf(MODE_ENGLISH, MODE_CHINESE) +
-            listOf(MODE_KOREAN).filter { it in extraLanguages(context) }
+            listOf(MODE_KOREAN, MODE_JAPANESE).filter { it in extraLanguages(context) }
         val index = order.indexOf(from)
         return order[(index + 1).mod(order.size)]
     }

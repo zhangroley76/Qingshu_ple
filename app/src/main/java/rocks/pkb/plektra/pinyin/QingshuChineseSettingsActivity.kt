@@ -117,7 +117,7 @@ private fun ChineseSettingsScreen(onBack: () -> Unit) {
             var korean by remember { mutableStateOf(QingshuMode.MODE_KOREAN in QingshuMode.extraLanguages(context)) }
             SwitchRow(
                 title = "한국어（韩文）",
-                description = "两套式键位。开启后 Shift+空格依序切换：English → 中文 → 한국어",
+                description = "两套式键位。开启后 Shift+空格依序切换：English → 中文 → 한국어 → 日本語（有开的）",
                 checked = korean
             ) {
                 korean = it
@@ -125,6 +125,19 @@ private fun ChineseSettingsScreen(onBack: () -> Unit) {
                 QingshuMode.setExtraLanguages(
                     context,
                     if (it) languages + QingshuMode.MODE_KOREAN else languages - QingshuMode.MODE_KOREAN
+                )
+            }
+            var japanese by remember { mutableStateOf(QingshuMode.MODE_JAPANESE in QingshuMode.extraLanguages(context)) }
+            SwitchRow(
+                title = "日本語（日文）",
+                description = "罗马字输入，单词转汉字（SKK 词典）。开启后 Shift+空格也会切到日本語",
+                checked = japanese
+            ) {
+                japanese = it
+                val languages = QingshuMode.extraLanguages(context)
+                QingshuMode.setExtraLanguages(
+                    context,
+                    if (it) languages + QingshuMode.MODE_JAPANESE else languages - QingshuMode.MODE_JAPANESE
                 )
             }
 

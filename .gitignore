@@ -52,3 +52,4 @@ __pycache__/
 # Qingjian engine and dictionary (scripts/fetch-qingjian-engine.sh)
 /app/src/main/jniLibs/
 /app/src/main/assets/qingjian/
+app/src/main/assets/japanese/

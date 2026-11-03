@@ -211,7 +211,7 @@ key KEYCODE_DEL
 check "Backspace undoes the fix" "hello teh"
 
 log "Korean (2-set): English -> 中文 -> 한국어 with Shift+Space; dkssudgktpdy -> 안녕하세요"
-timeout 30 adb shell am start -f 0x20000000 -n "$PKG/rocks.pkb.plektra.QingshuTestActivity" --es languages ko >/dev/null; sleep 1.5
+timeout 30 adb shell am start -f 0x20000000 -n "$PKG/rocks.pkb.plektra.QingshuTestActivity" --es languages ko,ja >/dev/null; sleep 1.5
 combo KEYCODE_SHIFT_LEFT KEYCODE_SPACE
 sleep 1
 combo KEYCODE_SHIFT_LEFT KEYCODE_SPACE
@@ -223,10 +223,21 @@ type_text ekfr
 key KEYCODE_DEL
 key KEYCODE_SPACE
 check "Korean backspace by stroke (닭 -> 달)" "안녕하세요 달 "
+log "Japanese: 한국어 -> 日本語; nihon -> 日本, kaku -> 書く (okurigana), then English"
+combo KEYCODE_SHIFT_LEFT KEYCODE_SPACE
+sleep 2
+for _ in $(seq 1 20); do timeout 30 adb logcat -d | grep -q 'QingshuJapanese.*Dictionary ready' && break; sleep 1; done
+type_text nihon
+key KEYCODE_SPACE
+check "Japanese nihon -> 日本" "달 日本"
+type_text kaku
+jcands=$(timeout 30 adb exec-out uiautomator dump /dev/tty 2>/dev/null | grep -o '書く' | head -1)
+key KEYCODE_SPACE
+check "Japanese kaku -> 書く" "日本書く"
 combo KEYCODE_SHIFT_LEFT KEYCODE_SPACE
 sleep 1
 type_text abc
-check "back to English after 한국어" "달 abc"
+check "back to English after 日本語" "書くabc"
 
 log "shortcut help: typing /? removes it and opens the help window"
 help_open() { timeout 30 adb shell dumpsys activity activities | grep -q 'QingshuShortcutsActivity'; }
