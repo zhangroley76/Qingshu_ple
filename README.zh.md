@@ -8,7 +8,7 @@
 
 - **中文拼音**：引擎来自 [青简 Qingjian](https://github.com/qingjian-team/qingjian)。用 Alt 加 Titan 上印着数字的那几个键选字；离线联想；繁体输出；模糊音。
 - **英文自动纠错**：来自 [Numen](https://github.com/jlo-aug/numen)，按 Titan 2 Elite 的键位估计手指打错的情形。
-- **韩文**（两套式）与 **日文**（罗马字，SKK 词典转汉字），可选开启。
+- **粤语**（粤拼，不用打声调）、**韩文**（两套式）与 **日文**（罗马字，SKK 词典转汉字），可选开启。
 
 打字都在手机上处理：拼音、联想、纠错和转换全部离线运作。青书没有帐号或使用统计，也不会自己检查更新。
 
@@ -45,9 +45,11 @@
 | 常用语 | 给常用语设代码（`yx` → 你的邮箱），打代码就出现在候选 |
 | 标点 | Alt+标点出全角标点；可选「」『』直角引号；SYM 第一页是中文标点 |
 
-### 韩文与日文（可选）
+### 粤语、韩文与日文（可选）
 
-在 **设置 → 中文 → 其他语言** 开启，之后 Shift+空格依次切换 English → 中文 → 한국어 → 日本語。
+在 **设置 → 中文 → 其他语言** 开启，之后 Shift+空格依次切换 English → 中文 → 粵語 → 한국어 → 日本語。
+
+- **粤语**：粤拼不用打声调（`neihou` → 你好、`mgoi` → 唔該），只打声母也行（`nh` → 你好）。词库来自 [rime-cantonese](https://github.com/rime/rime-cantonese)，按词转换（整串打完一个词一个词选），输出繁体、全角标点，选过的词会记住。新功能，欢迎讲粤语的朋友回馈。
 
 - **韩文**：两套式键位；Shift 打 ㄲ ㄸ ㅃ ㅆ ㅉ ㅒ ㅖ；退格一次删一笔。
 - **日文**：罗马字组成平假名，候选来自 SKK-JISYO.L，按单词转换，含送假名（`yomu` → 読む），也有平假名、片假名；选过的写法会记住。没有整句转换。
@@ -62,7 +64,7 @@
 
 - **Shift/Alt 对调**（设置 → Keyboard → Modifiers），解决 Titan 用 Alt 打数字不顺手的问题。
 - Titan 2 Elite 的 **Fn 当成 Ctrl**（它的 Fn 键送出厂商自定义键码）：在 设置 → Nav Mode 打开 *Ctrl-hold navigation* 后，Fn + E S D F 是方向键，Fn + W/R、U/I 选取文字，Fn + A/C/X/V/Z 编辑。
-- 中文、韩文、日文都不会触发英文的自动大写和纠错；密码、电邮栏位保持原样。浏览器网址栏可以打中文、韩文、日文（方便搜索），标点保持半角。
+- 中文、韩文、日文都不会触发英文的自动大写和纠错；密码、电邮栏位保持原样。浏览器网址栏可以打中文、粤语、韩文、日文（方便搜索），标点保持半角。
 - 打字统计（只记数量）：设置 → 中文。
 
 ## 安装
@@ -101,5 +103,6 @@ ANDROID_NDK_HOME=/path/to/ndk scripts/build-qingjian-engine.sh arm64-v8a   # 加
 - [青简 Qingjian](https://github.com/qingjian-team/qingjian)：拼音引擎、词库与语言模型
 - [Numen](https://github.com/jlo-aug/numen)：英文自动纠错引擎与资料
 - [SKK 词典](https://github.com/skk-dev/dict)（SKK-JISYO.L）：日文转换
+- [rime-cantonese](https://github.com/rime/rime-cantonese)（CC BY 4.0）：粤语词库
 
 资料来源与授权见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。青书以 [GPL-3.0](LICENSE) 发布，不是 Plektra、青简或 Numen 的官方版本，问题请回报到这里，不要回报给上游项目。

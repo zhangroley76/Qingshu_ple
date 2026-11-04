@@ -15,13 +15,13 @@ shot() { sleep 1.2; timeout 30 adb exec-out screencap -p > "$OUT/$1.png"; echo "
 host() { sh am start -f 0x20000000 -n "$ACT" "$@" >/dev/null; sleep 1.5; }
 mode_is() { timeout 30 adb logcat -d -s PlektraInputMethod:I | grep 'toggled Chinese' | tail -1 | grep -q "mode $1"; }
 to_mode() { # cycle Shift+Space until the wanted mode
-  for _ in 1 2 3 4 5; do mode_is "$1" && return; combo KEYCODE_SHIFT_LEFT KEYCODE_SPACE; sleep 0.8; done
+  for _ in 1 2 3 4 5 6; do mode_is "$1" && return; combo KEYCODE_SHIFT_LEFT KEYCODE_SPACE; sleep 0.8; done
 }
 
 sh wm size 1076x1200
 sh wm density 420
 sleep 2
-host --es languages ko,ja --es traditional off --es corner off --es fuzzy none --ez clear true
+host --es languages yue,ko,ja --es traditional off --es corner off --es fuzzy none --ez clear true
 key KEYCODE_BACK
 
 # 1. Pinyin with candidates
@@ -63,6 +63,14 @@ to_mode ja
 host --ez clear true
 text nihongo
 shot 06-japanese
+key KEYCODE_SPACE
+
+# 12. Cantonese (Jyutping)
+to_mode yue
+host --ez clear true
+sleep 2
+text neihou
+shot 12-cantonese
 key KEYCODE_SPACE
 
 # 7. English autocorrect

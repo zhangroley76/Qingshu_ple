@@ -263,6 +263,30 @@ sleep 1
 type_text abc
 check "back to English after 日本語" "読むabc"
 
+log "Cantonese (Jyutping): English -> 中文 -> 粵語; neihou -> 你好, mgoi -> 唔該, partial pick, then English"
+timeout 30 adb shell am start -f 0x20000000 -n "$PKG/rocks.pkb.plektra.QingshuTestActivity" --es languages yue >/dev/null; sleep 1.5
+combo KEYCODE_SHIFT_LEFT KEYCODE_SPACE
+sleep 1
+combo KEYCODE_SHIFT_LEFT KEYCODE_SPACE
+sleep 2
+for _ in $(seq 1 20); do timeout 30 adb logcat -d | grep -q 'QingshuCantonese.*Dictionary ready' && break; sleep 1; done
+type_text neihou
+key KEYCODE_SPACE
+check "Cantonese neihou -> 你好" "abc你好"
+type_text mgoi
+key KEYCODE_SPACE
+check "Cantonese mgoi -> 唔該" "你好唔該"
+# Two words in one go: Space takes the first word, the rest keeps composing.
+type_text sikfaanmei
+key KEYCODE_SPACE
+key KEYCODE_SPACE
+check "Cantonese sikfaanmei -> 食飯 + 未/味..." "唔該食飯"
+check_absent "no Jyutping letters left" "mei"
+combo KEYCODE_SHIFT_LEFT KEYCODE_SPACE
+sleep 1
+type_text xyz
+check "back to English after 粵語" "xyz"
+
 log "shortcut help: typing /? removes it and opens the help window"
 help_open() { timeout 30 adb shell dumpsys activity activities | grep -q 'QingshuShortcutsActivity'; }
 # Quoted for the device shell, where a bare ? is a glob.

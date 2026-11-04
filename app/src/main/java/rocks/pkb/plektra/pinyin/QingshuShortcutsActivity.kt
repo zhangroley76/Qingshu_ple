@@ -60,7 +60,7 @@ class QingshuShortcutsActivity : Activity() {
         val swapped = SettingsManager.getSwapShiftAlt(this)
         val alt = if (swapped) "Shift键" else "Alt"
         heading("中文")
-        row("Shift + 空格", "切换语言：EN / 中 / 한 / あ（后两个要在设置里开启）")
+        row("Shift + 空格", "切换语言：EN / 中 / 粵 / 한 / あ（粵、한、あ 要在设置里开启）")
         row("空格", "上屏高亮候选 / 选联想")
         row("$alt + W E R", "选第 1 2 3 个候选")
         row("$alt + S D F", "选第 4 5 6 个")

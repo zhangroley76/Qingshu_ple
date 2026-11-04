@@ -17,7 +17,7 @@ class JapaneseController(
     context: Context,
     private val inputConnection: () -> InputConnection?,
     private val onBarChanged: (PinyinBarState?) -> Unit,
-) {
+) : WordInputController {
     private val appContext = context.applicationContext
 
     /** Kana already converted from romaji, and the letters that don't make a kana yet. */
@@ -31,17 +31,16 @@ class JapaneseController(
     private var pageStart = 0
     private var lastEditUptime = 0L
 
-    var active: Boolean = false
+    override var active: Boolean = false
         private set
 
-    val isComposing: Boolean get() = kana.isNotEmpty() || pending.isNotEmpty()
+    override val isComposing: Boolean get() = kana.isNotEmpty() || pending.isNotEmpty()
 
-    data class Mods(val alt: Boolean, val ctrlOrMeta: Boolean, val altText: String?, val overlayActive: Boolean)
 
     /** A URL field (browser address bar): punctuation stays half-width. */
     private var halfWidthPunctuation = false
 
-    fun updateActive(on: Boolean, urlField: Boolean = false) {
+    override fun updateActive(on: Boolean, urlField: Boolean) {
         if (!on && active) commitKana()
         active = on
         halfWidthPunctuation = urlField
@@ -50,7 +49,7 @@ class JapaneseController(
 
     private fun mark(c: Char): String? = if (halfWidthPunctuation) null else PUNCTUATION_MAP[c]
 
-    fun onKeyDown(keyCode: Int, event: KeyEvent?, mods: Mods): Boolean {
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?, mods: WordInputController.Mods): Boolean {
         if (!active) return false
         if (mods.ctrlOrMeta || mods.overlayActive) {
             if (isComposing) commitHighlighted()
@@ -82,8 +81,8 @@ class JapaneseController(
             KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> cancel()
             KeyEvent.KEYCODE_DPAD_LEFT -> step(false)
             KeyEvent.KEYCODE_DPAD_RIGHT -> step(true)
-            KeyEvent.KEYCODE_DPAD_UP -> page(false)
-            KeyEvent.KEYCODE_DPAD_DOWN -> page(true)
+            KeyEvent.KEYCODE_DPAD_UP -> page(false, wrap = false)
+            KeyEvent.KEYCODE_DPAD_DOWN -> page(true, wrap = false)
             else -> {
                 val typed = event?.unicodeChar?.takeIf { it != 0 }?.toChar()
                 commitHighlighted()
@@ -121,12 +120,12 @@ class JapaneseController(
 
     // --- Bar (taps, swipes and the ‹ › buttons) ---
 
-    fun onBarTapped(index: Int) {
+    override fun onBarTapped(index: Int) {
         if (index in candidates.indices) select(index)
     }
 
     /** Moves the highlight; returns whether it moved. */
-    fun step(forward: Boolean): Boolean {
+    override fun step(forward: Boolean): Boolean {
         if (candidates.isEmpty()) return false
         val next = (highlighted + if (forward) 1 else -1).coerceIn(0, candidates.size - 1)
         if (next == highlighted) return false
@@ -136,7 +135,7 @@ class JapaneseController(
         return true
     }
 
-    fun page(forward: Boolean, wrap: Boolean = false) {
+    override fun page(forward: Boolean, wrap: Boolean) {
         if (candidates.isEmpty()) return
         var start = pageStart + if (forward) PAGE_SIZE else -PAGE_SIZE
         if (start >= candidates.size) start = if (wrap) 0 else pageStart
@@ -244,7 +243,7 @@ class JapaneseController(
     }
 
     /** Commits the highlighted candidate (used before punctuation and shortcuts). */
-    fun commitHighlighted() {
+    override fun commitHighlighted() {
         var guard = 0
         while (isComposing && guard++ < 8) select(highlighted)
     }
@@ -289,7 +288,7 @@ class JapaneseController(
     }
 
     /** Returns true when the update belongs to the composition. */
-    fun onSelectionUpdate(newSelStart: Int, newSelEnd: Int, candidatesEnd: Int): Boolean {
+    override fun onSelectionUpdate(newSelStart: Int, newSelEnd: Int, candidatesEnd: Int): Boolean {
         if (!isComposing) return false
         val own = SystemClock.uptimeMillis() - lastEditUptime < OWN_EDIT_WINDOW_MS
         val atEnd = candidatesEnd >= 0 && newSelStart == newSelEnd && newSelEnd == candidatesEnd
@@ -302,7 +301,7 @@ class JapaneseController(
         return true
     }
 
-    fun onFinishInput() {
+    override fun onFinishInput() {
         kana = ""
         pending = ""
         candidates = emptyList()

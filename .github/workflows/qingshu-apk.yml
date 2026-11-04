@@ -44,6 +44,9 @@ jobs:
       - name: Fetch the Japanese dictionary (SKK-JISYO.L)
         run: scripts/fetch-japanese-dictionary.sh
 
+      - name: Fetch the Cantonese dictionary (rime-cantonese)
+        run: scripts/fetch-cantonese-dictionary.sh
+
       # Built from source with Qingshu's patches (offline association), replacing the prebuilt library.
       - name: Build the Qingjian engine (arm64)
         run: |
@@ -175,6 +178,9 @@ jobs:
 
       - name: Fetch the Japanese dictionary (SKK-JISYO.L)
         run: scripts/fetch-japanese-dictionary.sh
+
+      - name: Fetch the Cantonese dictionary (rime-cantonese)
+        run: scripts/fetch-cantonese-dictionary.sh
 
       # Qingjian only publishes an arm64 engine; the emulator is x86_64, so build that ABI from
       # the same Qingjian release for this test APK (the phone APK stays arm64-only).

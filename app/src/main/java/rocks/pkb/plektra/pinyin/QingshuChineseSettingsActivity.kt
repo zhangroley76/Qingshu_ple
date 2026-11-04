@@ -114,10 +114,23 @@ private fun ChineseSettingsScreen(onBack: () -> Unit) {
 
             HorizontalDivider(modifier = Modifier.padding(top = 12.dp))
             SectionTitle("其他语言")
+            var cantonese by remember { mutableStateOf(QingshuMode.MODE_CANTONESE in QingshuMode.extraLanguages(context)) }
+            SwitchRow(
+                title = "粵語（粵拼）· Cantonese (Jyutping)",
+                description = "打粵拼不用打聲調（neihou → 你好，mgoi → 唔該），只打聲母也可以（nh → 你好）。按詞轉換，輸出繁體。詞庫：rime-cantonese。",
+                checked = cantonese
+            ) {
+                cantonese = it
+                val languages = QingshuMode.extraLanguages(context)
+                QingshuMode.setExtraLanguages(
+                    context,
+                    if (it) languages + QingshuMode.MODE_CANTONESE else languages - QingshuMode.MODE_CANTONESE
+                )
+            }
             var korean by remember { mutableStateOf(QingshuMode.MODE_KOREAN in QingshuMode.extraLanguages(context)) }
             SwitchRow(
                 title = "한국어（韩文）",
-                description = "两套式键位。开启后 Shift+空格依序切换：English → 中文 → 한국어 → 日本語（有开的）",
+                description = "两套式键位。开启后 Shift+空格依序切换：English → 中文 → 粵語 → 한국어 → 日本語（有开的）",
                 checked = korean
             ) {
                 korean = it

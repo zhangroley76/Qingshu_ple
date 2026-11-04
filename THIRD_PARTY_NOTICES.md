@@ -166,3 +166,15 @@ Junichi Okukawa, Katsushi Sato, Nobuhiro Yamagishi, NAKAJIMA Mikio, MITA Yuusuke
 Development Team. It is free software under the GNU General Public License, version 2 or (at your
 option) any later version. The build converts it to UTF-8 and removes annotations
 (`scripts/fetch-japanese-dictionary.sh`).
+
+## rime-cantonese (Cantonese input)
+
+Qingshu's Cantonese (Jyutping) input uses the lexicon of rime-cantonese
+(https://github.com/rime/rime-cantonese) by the Rime Cantonese contributors (CanCLID and others),
+licensed under the Creative Commons Attribution 4.0 International License
+(https://creativecommons.org/licenses/by/4.0/). Qingshu uses `jyut6ping3.chars.dict.yaml`,
+`jyut6ping3.words.dict.yaml`, `jyut6ping3.phrase.dict.yaml`, `jyut6ping3.lettered.dict.yaml` and
+`essay-cantonese.txt`. Changes: the build removes the tones, merges the files into one reading
+index, spells phrases and essay words that have no reading from their characters' main readings,
+ranks words by the essay frequencies and adds initials-only abbreviations
+(`scripts/fetch-cantonese-dictionary.sh`). `jyut6ping3.maps.dict.yaml` (ODbL) is not used.

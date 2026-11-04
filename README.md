@@ -8,7 +8,7 @@ Qingshu is a fork of [Plektra](https://github.com/pkb-rocks/plektra) (the succes
 
 - **Chinese pinyin** from the [Qingjian](https://github.com/qingjian-team/qingjian) engine, with candidates picked from the keyboard (Alt + the keys that carry the digits on the Titan), offline next-word association, traditional output and fuzzy pinyin.
 - **English autocorrect** from [Numen](https://github.com/jlo-aug/numen), tuned to the slips fingers make on the Titan 2 Elite's keys.
-- **Korean** (2-set) and **Japanese** (romaji, kanji from the SKK dictionary) as optional languages.
+- **Cantonese** (Jyutping, no tones needed), **Korean** (2-set) and **Japanese** (romaji, kanji from the SKK dictionary) as optional languages.
 
 Typing is processed on the phone: pinyin, association, autocorrect and conversion are all offline. Qingshu has no account or analytics and doesn't check for updates by itself.
 
@@ -45,9 +45,11 @@ Taken on the Android emulator at the Titan 2 Elite's screen size, by `scripts/em
 | Phrases | Give a phrase a code (`yx` → your email) and it becomes a candidate |
 | Punctuation | Alt+punctuation gives full-width marks; optional 「」『』 quotes; SYM page 1 is Chinese punctuation |
 
-### Korean and Japanese (optional)
+### Cantonese, Korean and Japanese (optional)
 
-Switch them on in **Settings → 中文 → 其他语言**; Shift+Space then cycles English → 中文 → 한국어 → 日本語.
+Switch them on in **Settings → 中文 → 其他语言**; Shift+Space then cycles English → 中文 → 粵語 → 한국어 → 日本語.
+
+- **Cantonese**: Jyutping without tones (`neihou` → 你好, `mgoi` → 唔該), or just the initials (`nh` → 你好). Words come from the [rime-cantonese](https://github.com/rime/rime-cantonese) lexicon, word by word (type a whole phrase and pick it a word at a time), in traditional characters with full-width punctuation. Picks are remembered. Cantonese is new, so feedback from Cantonese speakers is very welcome.
 
 - **Korean**: 2-set layout; Shift for ㄲ ㄸ ㅃ ㅆ ㅉ ㅒ ㅖ; Backspace removes one stroke at a time.
 - **Japanese**: romaji composes hiragana; candidates come from SKK-JISYO.L, word by word, with okurigana (`yomu` → 読む) and hiragana / katakana. Picks are remembered. There is no whole-sentence conversion.
@@ -62,7 +64,7 @@ Switch them on in **Settings → 中文 → 其他语言**; Shift+Space then cyc
 
 - **Shift/Alt swap** (Settings → Keyboard → Modifiers) for the Titan's awkward Alt-for-digits.
 - **Fn as Ctrl** on the Titan 2 Elite (its Fn key sends a vendor key code): with Settings → Nav Mode → *Ctrl-hold navigation*, Fn + E S D F are the arrows, Fn + W/R and U/I select, Fn + A/C/X/V/Z edit.
-- Chinese, Korean and Japanese never trigger English auto-capitalisation or autocorrect; password and email fields stay plain. Browser address bars accept Chinese, Korean and Japanese (for searches) with half-width punctuation.
+- Chinese, Korean and Japanese never trigger English auto-capitalisation or autocorrect; password and email fields stay plain. Browser address bars accept Chinese, Cantonese, Korean and Japanese (for searches) with half-width punctuation.
 - Typing stats (counts only) in Settings → 中文.
 
 ## Install
@@ -101,5 +103,6 @@ Qingshu's changes to Qingjian (offline association, traditional association) are
 - [Qingjian 青简](https://github.com/qingjian-team/qingjian): pinyin engine, dictionaries and language model
 - [Numen](https://github.com/jlo-aug/numen): English autocorrect engine and data
 - [SKK dictionary](https://github.com/skk-dev/dict) (SKK-JISYO.L): Japanese conversion
+- [rime-cantonese](https://github.com/rime/rime-cantonese) (CC BY 4.0): Cantonese lexicon
 
 Data sources and their licences are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Qingshu is free software under the [GPL-3.0](LICENSE). It is not an official release of Plektra, Qingjian or Numen; please report Qingshu problems here, not upstream.
