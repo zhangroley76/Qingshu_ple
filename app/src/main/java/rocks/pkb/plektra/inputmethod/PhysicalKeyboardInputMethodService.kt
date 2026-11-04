@@ -3445,7 +3445,8 @@ class PhysicalKeyboardInputMethodService : InputMethodService(), ClicksAccessibi
         )
         if (::japaneseController.isInitialized) {
             japaneseController.updateActive(
-                mode == rocks.pkb.plektra.pinyin.QingshuMode.MODE_JAPANESE && rocks.pkb.plektra.pinyin.PinyinController.acceptsPinyin(editorInfo)
+                mode == rocks.pkb.plektra.pinyin.QingshuMode.MODE_JAPANESE && rocks.pkb.plektra.pinyin.PinyinController.acceptsPinyin(editorInfo),
+                urlField = rocks.pkb.plektra.pinyin.PinyinController.isUrlField(editorInfo)
             )
         }
         if (::symLayoutController.isInitialized) {

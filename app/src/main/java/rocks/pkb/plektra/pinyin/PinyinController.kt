@@ -63,6 +63,9 @@ class PinyinController(
         val altLocked: Boolean = false,
     )
 
+    /** A URL field (browser address bar): punctuation stays half-width. */
+    private var halfWidthPunctuation = false
+
     /** Updates [active] for the current language and field; returns the new value. */
     fun updateActive(chineseSubtype: Boolean, editorInfo: EditorInfo?): Boolean {
         val wanted = chineseSubtype && acceptsPinyin(editorInfo)
@@ -72,6 +75,7 @@ class PinyinController(
             engine.flushLearning()
         }
         active = wanted
+        halfWidthPunctuation = isUrlField(editorInfo)
         if (chineseSubtype) engine.ensureLoaded()
         return active
     }
@@ -455,6 +459,8 @@ class PinyinController(
 
     /** Full-width punctuation; quotes become 「」『』 when that option is on, paired by what's before the cursor. */
     private fun punctuate(c: Char): String {
+        // Address bars: "example.com/a?b" must stay ASCII.
+        if (halfWidthPunctuation) return c.toString()
         if ((c == '"' || c == '\'') && QingshuChineseSettings.cornerQuotes(appContext)) {
             val (open, close) = if (c == '"') '「' to '」' else '『' to '』'
             val before = try {
@@ -516,7 +522,17 @@ class PinyinController(
         private fun isAsciiPunctuation(c: Char): Boolean =
             c.code in 0x21..0x7E && !c.isLetterOrDigit()
 
-        /** Passwords, URLs, e-mail addresses and non-text fields bypass the engine, as in Qingjian. */
+        /**
+         * Passwords, e-mail addresses and non-text fields bypass the engine. URL fields don't: a
+         * browser's address bar is also its search box (Firefox, Chrome), so Chinese works there,
+         * with half-width punctuation (see [isUrlField]).
+         */
+        fun isUrlField(info: EditorInfo?): Boolean {
+            val type = info?.inputType ?: return false
+            return type and InputType.TYPE_MASK_CLASS == InputType.TYPE_CLASS_TEXT &&
+                type and InputType.TYPE_MASK_VARIATION == InputType.TYPE_TEXT_VARIATION_URI
+        }
+
         fun acceptsPinyin(info: EditorInfo?): Boolean {
             val type = info?.inputType ?: return false
             if (type and InputType.TYPE_MASK_CLASS != InputType.TYPE_CLASS_TEXT) return false
@@ -524,7 +540,6 @@ class PinyinController(
                 InputType.TYPE_TEXT_VARIATION_PASSWORD,
                 InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD,
                 InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD,
-                InputType.TYPE_TEXT_VARIATION_URI,
                 InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,
                 InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS -> false
                 else -> true

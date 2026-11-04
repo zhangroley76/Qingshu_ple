@@ -187,6 +187,16 @@ log "Alt+N full-width comma"
 combo KEYCODE_ALT_LEFT KEYCODE_N
 check "Alt+N comma" "，"
 
+log "URL field (browser address bar): Chinese still works, punctuation stays half-width"
+timeout 30 adb shell am start -f 0x20000000 -n "$PKG/rocks.pkb.plektra.QingshuTestActivity" --es url on >/dev/null; sleep 1.5
+type_text nihao
+key KEYCODE_SPACE
+key KEYCODE_PERIOD
+check "Chinese in a URL field" "，你好"
+check "half-width period in a URL field" "你好."
+key KEYCODE_BACK
+timeout 30 adb shell am start -f 0x20000000 -n "$PKG/rocks.pkb.plektra.QingshuTestActivity" --es url off >/dev/null; sleep 1.5
+
 log "Shift+Space -> English"
 combo KEYCODE_SHIFT_LEFT KEYCODE_SPACE
 type_text abc

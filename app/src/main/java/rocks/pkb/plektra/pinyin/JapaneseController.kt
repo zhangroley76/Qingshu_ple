@@ -38,11 +38,17 @@ class JapaneseController(
 
     data class Mods(val alt: Boolean, val ctrlOrMeta: Boolean, val altText: String?, val overlayActive: Boolean)
 
-    fun updateActive(on: Boolean) {
+    /** A URL field (browser address bar): punctuation stays half-width. */
+    private var halfWidthPunctuation = false
+
+    fun updateActive(on: Boolean, urlField: Boolean = false) {
         if (!on && active) commitKana()
         active = on
+        halfWidthPunctuation = urlField
         if (on) JapaneseDictionary.get(appContext) { if (isComposing) refresh() }
     }
+
+    private fun mark(c: Char): String? = if (halfWidthPunctuation) null else PUNCTUATION_MAP[c]
 
     fun onKeyDown(keyCode: Int, event: KeyEvent?, mods: Mods): Boolean {
         if (!active) return false
@@ -62,7 +68,7 @@ class JapaneseController(
         }
         if (!isComposing) {
             val typed = event?.unicodeChar?.takeIf { it != 0 }?.toChar()
-            val mark = typed?.let { PUNCTUATION[it] }
+            val mark = typed?.let { mark(it) }
             if (mark != null) {
                 commit(mark)
                 return true
@@ -81,7 +87,7 @@ class JapaneseController(
             else -> {
                 val typed = event?.unicodeChar?.takeIf { it != 0 }?.toChar()
                 commitHighlighted()
-                val mark = typed?.let { PUNCTUATION[it] }
+                val mark = typed?.let { mark(it) }
                 if (mark != null) {
                     commit(mark)
                     return true
@@ -95,7 +101,7 @@ class JapaneseController(
     private fun handleAlt(keyCode: Int, altText: String?): Boolean {
         val c = altText?.singleOrNull()
         if (!isComposing) {
-            val mark = c?.let { PUNCTUATION[it] } ?: return false
+            val mark = c?.let { mark(it) } ?: return false
             commit(mark)
             return true
         }
@@ -105,9 +111,9 @@ class JapaneseController(
                 val index = pageStart + (c - '1')
                 if (index < candidates.size) select(index)
             }
-            c != null && PUNCTUATION.containsKey(c) -> {
+            c != null && PUNCTUATION_MAP.containsKey(c) -> {
                 commitHighlighted()
-                commit(PUNCTUATION.getValue(c))
+                commit(mark(c) ?: c.toString())
             }
         }
         return true
@@ -353,7 +359,7 @@ class JapaneseController(
             "いて", "いた", "んで", "んだ", "かった", "くて", "ければ", "れる", "られる", "せる", "よう"
         )
 
-        private val PUNCTUATION = mapOf(
+        private val PUNCTUATION_MAP = mapOf(
             ',' to "、", '.' to "。", '?' to "？", '!' to "！", ':' to "：", ';' to "；",
             '[' to "「", ']' to "」", '(' to "（", ')' to "）", '~' to "〜", '/' to "・"
         )

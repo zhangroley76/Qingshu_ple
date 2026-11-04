@@ -76,6 +76,14 @@ class QingshuTestActivity : Activity() {
             "chinese_settings" -> startActivity(android.content.Intent(this, rocks.pkb.plektra.pinyin.QingshuChineseSettingsActivity::class.java))
             "phrases" -> startActivity(android.content.Intent(this, rocks.pkb.plektra.pinyin.QingshuPhrasesActivity::class.java))
         }
+        intent.getStringExtra("url")?.let {
+            // Like a browser address bar; setInputType restarts input, so the keyboard re-reads it.
+            field.inputType = InputType.TYPE_CLASS_TEXT or
+                if (it == "on") InputType.TYPE_TEXT_VARIATION_URI
+                else InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            field.setSelection(field.text.length)
+            Log.i(TAG, "url=$it")
+        }
         intent.getStringExtra("fuzzy")?.let {
             rocks.pkb.plektra.pinyin.QingshuChineseSettings.setFuzzy(this, it.split(',').filter(String::isNotBlank).toSet())
             Log.i(TAG, "fuzzy=$it")

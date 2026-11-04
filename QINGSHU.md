@@ -70,7 +70,7 @@ ANDROID_NDK_HOME=/path/to/ndk scripts/build-qingjian-engine.sh arm64-v8a
 
 装了 Shizuku 并开启 Plektra 的触控板手势时：在实体键盘表面左右滑可移动高亮，往上滑上屏高亮候选。
 
-密码、网址、电邮栏位不走拼音。
+密码、电邮栏位不走拼音。网址栏（浏览器的地址栏也是搜索框）可以打中文、韩文、日文，标点保持半角。
 
 ## 已知限制（第一版）
 

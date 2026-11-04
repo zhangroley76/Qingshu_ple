@@ -62,7 +62,7 @@ Switch them on in **Settings → 中文 → 其他语言**; Shift+Space then cyc
 
 - **Shift/Alt swap** (Settings → Keyboard → Modifiers) for the Titan's awkward Alt-for-digits.
 - **Fn as Ctrl** on the Titan 2 Elite (its Fn key sends a vendor key code): with Settings → Nav Mode → *Ctrl-hold navigation*, Fn + E S D F are the arrows, Fn + W/R and U/I select, Fn + A/C/X/V/Z edit.
-- Chinese, Korean and Japanese never trigger English auto-capitalisation or autocorrect; password, URL and email fields stay plain.
+- Chinese, Korean and Japanese never trigger English auto-capitalisation or autocorrect; password and email fields stay plain. Browser address bars accept Chinese, Korean and Japanese (for searches) with half-width punctuation.
 - Typing stats (counts only) in Settings → 中文.
 
 ## Install
