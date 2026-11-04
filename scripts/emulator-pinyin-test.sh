@@ -280,7 +280,8 @@ check "Cantonese mgoi -> 唔該" "你好唔該"
 type_text sikfaanmei
 key KEYCODE_SPACE
 key KEYCODE_SPACE
-check "Cantonese sikfaanmei -> 食飯 + 未/味..." "唔該食飯"
+check "Cantonese sikfaanmei -> 食飯 then 未 (word by word)" "唔該食飯未"
+check_absent "no guessed longer word (食飯未吖)" "未吖"
 check_absent "no Jyutping letters left" "mei"
 combo KEYCODE_SHIFT_LEFT KEYCODE_SPACE
 sleep 1

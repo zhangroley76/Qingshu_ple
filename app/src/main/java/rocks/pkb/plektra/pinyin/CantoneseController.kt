@@ -173,21 +173,35 @@ class CantoneseController(
         }
         learned(reading)?.let { add(it, reading.length) }
         val exact = dictionary.lookup(reading)
-        // The common words first, then longer words this could become ("neih" → 你好), then the
-        // rest of the exact readings (rare characters), then initials-only abbreviations.
+        // The longest first part that is a word ("ngodeisikfaan" → 我哋): pick it and the rest keeps
+        // composing.
+        var partialLength = 0
+        var partial: List<String> = emptyList()
+        for (length in reading.length - 1 downTo 1) {
+            val words = dictionary.lookup(reading.substring(0, length))
+            if (words.isEmpty()) continue
+            partialLength = length
+            partial = words
+            break
+        }
+        fun addPartial() {
+            if (partialLength == 0) return
+            learned(reading.substring(0, partialLength))?.let { add(it, partialLength) }
+            partial.take(PARTIAL).forEach { add(it, partialLength) }
+        }
+        // Whole syllables typed ("sikfaanmei" = sik faan mei) with no word for all of them: word by
+        // word beats guessing a longer word (食飯未吖). An unfinished last syllable ("neih") is
+        // better served by the longer words it can become (你好).
+        val wordByWord = exact.isEmpty() && partialLength > 0 &&
+            dictionary.lookup(reading.substring(partialLength)).isNotEmpty()
+        if (wordByWord) addPartial()
+        // The common words first, then longer words this could become, then the rest of the exact
+        // readings (rare characters), then initials-only abbreviations.
         exact.take(EXACT_FIRST).forEach { add(it, reading.length) }
         if (reading.length >= 2) dictionary.completions(reading, COMPLETIONS).forEach { add(it, reading.length) }
         if (reading.length in 2..4) dictionary.lookup("#$reading").take(ABBREVIATIONS).forEach { add(it, reading.length) }
         exact.drop(EXACT_FIRST).forEach { add(it, reading.length) }
-        // The longest first part that is a word: pick it and the rest keeps composing.
-        for (length in reading.length - 1 downTo 1) {
-            val prefix = reading.substring(0, length)
-            val words = dictionary.lookup(prefix)
-            if (words.isEmpty()) continue
-            learned(prefix)?.let { add(it, length) }
-            words.take(PARTIAL).forEach { add(it, length) }
-            break
-        }
+        addPartial()
         if (out.isEmpty()) add(reading, reading.length)
         return out.values.toList()
     }
