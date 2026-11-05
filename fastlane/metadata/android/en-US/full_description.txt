@@ -1,5 +1,33 @@
-Plektra is a free, open-source Android input method for phones with physical keyboards.
+Qingshu (青书) is a free, open-source input method for Android phones with a physical keyboard, made on the Unihertz Titan 2 Elite. Everything is typed and chosen from the keys, without touching the screen, and all processing is offline: no account, no analytics, no network access needed for typing.
 
-It provides configurable hardware layouts, Shift/Ctrl/Alt/SYM behaviour, navigation shortcuts, suggestions, snippets, emoji and symbol pages, clipboard history, themes, backup and restore, and a compact Slim mode.
+<b>Chinese (pinyin)</b>
+<ul>
+<li>Whole-sentence pinyin from the open-source Qingjian engine</li>
+<li>Pick candidates 1–9 with Alt + the keys that carry the digits; Space takes the highlighted one</li>
+<li>Offline next-word association, learning of the words you pick</li>
+<li>Traditional output (Taiwan / Hong Kong forms), fuzzy pinyin, initials-only input</li>
+<li>Domain dictionaries (idioms, places, IT, medicine, law…), custom phrases (type a code, get your e-mail address)</li>
+</ul>
 
-Plektra is developed and release-tested on the Unihertz Titan 2 and Titan 2 Elite. Stable and Nightly use separate app identities and can be installed together.
+<b>Cantonese, Korean, Japanese (optional)</b>
+<ul>
+<li>Cantonese: Jyutping without tones (neihou → 你好), initials work too; lexicon from rime-cantonese</li>
+<li>Korean: 2-set layout</li>
+<li>Japanese: romaji → kana → kanji, word by word, from the SKK dictionary</li>
+</ul>
+
+<b>English</b>
+<ul>
+<li>Autocorrect tuned to the keyboard's layout (from Numen); Backspace right after a fix undoes it</li>
+</ul>
+
+<b>Keyboard</b>
+<ul>
+<li>All of Plektra's hardware-keyboard features: modifiers, SYM pages, navigation mode, snippets, clipboard history</li>
+<li>Shift/Alt swap, Fn as Ctrl with arrow keys on Fn + E S D F</li>
+<li>Type /? in any text field for the list of shortcuts</li>
+</ul>
+
+The APK is large (about 95 MB) because the Chinese dictionaries, the language model and the Cantonese and Japanese dictionaries are bundled for offline use.
+
+Qingshu is a fork of Plektra (the successor of Pastiera). It is not an official release of Plektra, Qingjian or Numen.

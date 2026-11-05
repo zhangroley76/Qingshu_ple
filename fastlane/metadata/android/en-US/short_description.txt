@@ -1,1 +1,1 @@
-Open-source Android keyboard for devices with physical keys.
+Offline physical-keyboard IME: Chinese pinyin, Cantonese, Japanese, Korean
